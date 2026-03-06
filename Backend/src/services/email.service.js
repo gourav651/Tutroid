@@ -28,7 +28,21 @@ async function createTransporter() {
     return { isResend: true };
   }
   
-  // Option 2: SendGrid (Fallback)
+  // Option 2: Brevo (300 emails/day free)
+  if (process.env.BREVO_API_KEY) {
+    console.log("[Email] Using Brevo API for email delivery");
+    return nodemailer.createTransport({
+      host: "smtp-relay.sendinblue.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.BREVO_SMTP_USER || process.env.FROM_EMAIL,
+        pass: process.env.BREVO_API_KEY,
+      },
+    });
+  }
+
+  // Option 3: SendGrid (Fallback)
   if (process.env.SENDGRID_API_KEY) {
     console.log("[Email] Using SendGrid for email delivery");
     return nodemailer.createTransport({
@@ -103,6 +117,7 @@ export const sendVerificationOTPEmail = async (email, otp) => {
   
   // Use Resend if available
   if (process.env.RESEND_API_KEY && resend) {
+    console.log(`[Email] 🚀 Using Resend to send OTP to ${email}`);
     try {
       const { data, error } = await resend.emails.send({
         from: 'Tutroid <onboarding@resend.dev>',
@@ -125,17 +140,24 @@ export const sendVerificationOTPEmail = async (email, otp) => {
       });
 
       if (error) {
-        console.error("[Email] ❌ Resend error:", error);
-        throw new Error("Failed to send verification OTP email");
+        console.error("[Email] ❌ Resend API error:", error);
+        console.error("[Email] ❌ Error details:", JSON.stringify(error, null, 2));
+        throw new Error(`Resend API error: ${error.message || 'Unknown error'}`);
       }
 
       console.log(`[Email] ✅ Verification OTP sent to ${email} via Resend`);
-      console.log(`[Email] Message ID: ${data.id}`);
+      console.log(`[Email] 📧 Message ID: ${data.id}`);
+      console.log(`[Email] 📊 Resend response:`, JSON.stringify(data, null, 2));
       return { success: true };
     } catch (error) {
       console.error("[Email] ❌ Error sending verification OTP via Resend:", error);
+      console.error("[Email] ❌ Full error object:", JSON.stringify(error, null, 2));
       throw new Error("Failed to send verification OTP email");
     }
+  } else {
+    console.log(`[Email] ⚠️  Resend not available, using fallback for ${email}`);
+    console.log(`[Email] 🔍 Debug - RESEND_API_KEY exists: ${!!process.env.RESEND_API_KEY}`);
+    console.log(`[Email] 🔍 Debug - resend object exists: ${!!resend}`);
   }
   
   // Fallback to existing email service (SendGrid/Gmail/etc)
