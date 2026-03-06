@@ -208,10 +208,6 @@ export const loginService = async ({ email, password }) => {
     throw new AppError("Account inactive", 403);
   }
 
-  if (!user.isActive) {
-    throw new AppError("Account suspended", 403);
-  }
-
   const isValidPassword = await bcrypt.compare(password, user.password);
 
   if (!isValidPassword) {
@@ -221,6 +217,11 @@ export const loginService = async ({ email, password }) => {
   // SECURITY: Require email verification before login
   if (!user.isVerified) {
     throw new AppError("Please verify your email address before logging in. Check your inbox for the verification code.", 403);
+  }
+
+  // Check if account is active (activated after email verification)
+  if (!user.isActive) {
+    throw new AppError("Account not activated. Please verify your email address first.", 403);
   }
 
   const token = jwt.sign(

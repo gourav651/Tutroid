@@ -141,11 +141,12 @@ export const verifyEmailOTP = async (email, otp) => {
     throw new AppError("Invalid OTP", 400);
   }
 
-  // Mark user as verified and clear OTP fields
+  // Mark user as verified and active, clear OTP fields
   await client.user.update({
     where: { email: normalizedEmail },
     data: {
       isVerified: true,
+      isActive: true, // Activate user after successful verification
       resetPasswordOTP: null,
       resetPasswordOTPExpires: null,
     },

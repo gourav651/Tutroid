@@ -1,6 +1,7 @@
 import { signupService, loginService } from "./auth.service.js";
 import { sendVerificationOTP } from "./emailVerification.service.js";
 import prisma from "../../db.js";
+import bcrypt from "bcrypt";
 
 // ================= SIMPLE SIGNUP CONTROLLER =================
 export const signup = async (req, res, next) => {
@@ -22,54 +23,104 @@ export const signup = async (req, res, next) => {
 
     // Basic role validation
     const allowedRoles = ["TRAINER", "INSTITUTION", "STUDENT"];
-    if (!allowedRoles.includes(normalizedRole)) {
+    if (!normalizedRole || !allowedRoles.includes(normalizedRole)) {
       return res.status(400).json({
         success: false,
         message: "Invalid role. Must be TRAINER, INSTITUTION, or STUDENT",
       });
     }
 
-    // Call service with timeout
-    const result = await Promise.race([
-      signupService({
-        email,
-        password,
-        role: normalizedRole,
-        phone,
-        organization
-      }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Signup service timeout')), 15000) // 15 second timeout
-      )
-    ]);
+    const normalizedEmail = email.toLowerCase().trim();
 
-    // Send verification OTP (REQUIRED for signup) - Make it non-blocking
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, isVerified: true }
+    });
+
+    if (existingUser) {
+      if (existingUser.isVerified) {
+        return res.status(409).json({
+          success: false,
+          message: "Email already registered and verified. Please login instead.",
+        });
+      } else {
+        // User exists but not verified - resend OTP
+        try {
+          await sendVerificationOTP(normalizedEmail);
+          return res.status(200).json({
+            success: true,
+            message: "Account already exists but not verified. New verification OTP sent to your email.",
+            data: { email: normalizedEmail },
+            requiresVerification: true
+          });
+        } catch (err) {
+          console.error("Failed to resend verification OTP:", err);
+          return res.status(500).json({
+            success: false,
+            message: "Failed to send verification email. Please try again.",
+          });
+        }
+      }
+    }
+
+    // Store signup data temporarily (don't create user yet)
+    const signupData = {
+      email: normalizedEmail,
+      password,
+      role: normalizedRole,
+      phone,
+      organization,
+      timestamp: new Date()
+    };
+
+    // Store in a temporary collection or cache (using database for simplicity)
+    // We'll create a PendingSignup model or use a temporary field
+    const hashedPassword = await bcrypt.hash(password, Number(process.env.BCRYPT_ROUNDS) || 4);
+    
+    // Create user but mark as unverified and inactive
+    const tempUser = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        username: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Temporary username
+        password: hashedPassword,
+        role: normalizedRole,
+        headline: normalizedRole === "TRAINER" ? (organization || "Expert Trainer") : 
+                 (normalizedRole === "INSTITUTION" ? (organization || "Educational Institution") : "Student"),
+        isVerified: false,
+        isActive: false, // Mark as inactive until verified
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      }
+    });
+
+    // Send verification OTP
     try {
-      // Don't await - send email in background
-      sendVerificationOTP(email).catch(err => {
-        console.error("Failed to send verification OTP (background):", err);
-      });
-      console.log(`[Signup] Verification OTP queued for ${email}`);
+      await sendVerificationOTP(normalizedEmail);
+      console.log(`[Signup] Verification OTP sent to ${normalizedEmail}`);
     } catch (err) {
-      console.error("Failed to queue verification OTP:", err);
-      // Don't fail signup if email fails - user can request resend
+      console.error("Failed to send verification OTP:", err);
+      // If email fails, delete the temporary user
+      await prisma.user.delete({ where: { id: tempUser.id } }).catch(() => {});
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send verification email. Please try again.",
+      });
     }
 
     res.status(201).json({
       success: true,
-      message: "Account created successfully! Please check your email and verify your account before logging in.",
+      message: "Verification OTP sent to your email. Please verify to complete registration.",
       data: {
-        user: {
-          id: result.user.id,
-          email: result.user.email,
-          username: result.user.username,
-          role: result.user.role,
-          isVerified: false
-        },
-        email: email,
+        email: normalizedEmail,
+        message: "Account will be created after email verification"
       },
       requiresVerification: true,
-      nextStep: "Please check your email for the verification code and use the verify-email endpoint."
+      nextStep: "Check your email for the verification code and use the verify-email endpoint."
     });
   } catch (err) {
     console.error("Simple signup error:", err);
