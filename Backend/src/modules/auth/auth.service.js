@@ -62,12 +62,18 @@ export const signupService = async ({ email, password, role, phone, organization
     throw new AppError("Invalid role", 400);
   }
 
-  const existingUser = await withRetry(async () => {
-    return await client.user.findUnique({
-      where: { email: normalizedEmail },
-      select: { id: true },
-    });
-  });
+  // Check existing user with timeout
+  const existingUser = await Promise.race([
+    withRetry(async () => {
+      return await client.user.findUnique({
+        where: { email: normalizedEmail },
+        select: { id: true },
+      });
+    }),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database check timeout')), 5000)
+    )
+  ]);
 
   if (existingUser) {
     throw new AppError("Email already registered", 409);
@@ -75,60 +81,45 @@ export const signupService = async ({ email, password, role, phone, organization
 
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-  // Generate unique username
+  // Generate unique username (simplified)
   const username = await generateUsername(normalizedEmail, null, null);
 
-  const createdUser = await withRetry(async () => {
-    return await client.user.create({
-      data: {
-        email: normalizedEmail,
-        username,
-        password: hashedPassword,
-        role,
-        // Use organization as a headline or name base
-        headline: role === "TRAINER" ? (organization || "Expert Trainer") : (role === "INSTITUTION" ? (organization || "Educational Institution") : "Student"),
+  // Create user with timeout and simplified profile creation
+  const createdUser = await Promise.race([
+    withRetry(async () => {
+      return await client.user.create({
+        data: {
+          email: normalizedEmail,
+          username,
+          password: hashedPassword,
+          role,
+          headline: role === "TRAINER" ? (organization || "Expert Trainer") : 
+                   (role === "INSTITUTION" ? (organization || "Educational Institution") : "Student"),
 
-        // Automatically create appropriate profile record
-        ...(role === "TRAINER" && {
-        trainerProfile: {
-          create: {
-            experience: 0,
-            skills: [],
-            location: "Not specified",
-            bio: organization ? `Expertise in ${organization}` : "Experienced trainer ready to share knowledge.",
-          },
+          // Create profiles separately to avoid complex nested operations
         },
-      }),
-      ...(role === "INSTITUTION" && {
-        institutionProfile: {
-          create: {
-            name: organization || normalizedEmail.split("@")[0],
-            location: "Not specified",
-          },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          role: true,
+          firstName: true,
+          lastName: true,
+          profilePicture: true,
+          headline: true,
+          createdAt: true,
         },
-      }),
-      ...(role === "STUDENT" && {
-        studentProfile: {
-          create: {
-            bio: "Aspiring student.",
-          },
-        },
-      }),
-    },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      role: true,
-      firstName: true,
-      lastName: true,
-      profilePicture: true,
-      headline: true,
-      createdAt: true,
-    },
-    });
+      });
+    }),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('User creation timeout')), 10000)
+    )
+  ]);
+
+  // Create profile records separately (non-blocking)
+  createProfileAsync(createdUser.id, role, organization).catch(err => {
+    console.error('Profile creation failed (background):', err);
   });
-
 
   const token = jwt.sign(
     {
@@ -139,19 +130,10 @@ export const signupService = async ({ email, password, role, phone, organization
     JWT_OPTIONS,
   );
 
-  // Debug logging
-  console.log(
-    "Generated token for user:",
-    createdUser.email,
-    "Role:",
-    createdUser.role,
-  );
-
-  // Don't send verification OTP here - it's handled in the controller
-  // Token will be sent after email verification
+  console.log("Generated token for user:", createdUser.email, "Role:", createdUser.role);
 
   return {
-    token, // Keep token for now, but controller won't send it until verified
+    token,
     user: {
       id: createdUser.id,
       email: createdUser.email,
@@ -164,6 +146,41 @@ export const signupService = async ({ email, password, role, phone, organization
       createdAt: createdUser.createdAt,
     },
   };
+};
+
+// Helper function to create profiles asynchronously
+const createProfileAsync = async (userId, role, organization) => {
+  try {
+    if (role === "TRAINER") {
+      await client.trainerProfile.create({
+        data: {
+          userId,
+          experience: 0,
+          skills: [],
+          location: "Not specified",
+          bio: organization ? `Expertise in ${organization}` : "Experienced trainer ready to share knowledge.",
+        },
+      });
+    } else if (role === "INSTITUTION") {
+      await client.institutionProfile.create({
+        data: {
+          userId,
+          name: organization || "Educational Institution",
+          location: "Not specified",
+        },
+      });
+    } else if (role === "STUDENT") {
+      await client.studentProfile.create({
+        data: {
+          userId,
+          bio: "Aspiring student.",
+        },
+      });
+    }
+    console.log(`Profile created for user ${userId} with role ${role}`);
+  } catch (error) {
+    console.error(`Failed to create profile for user ${userId}:`, error);
+  }
 };
 
 

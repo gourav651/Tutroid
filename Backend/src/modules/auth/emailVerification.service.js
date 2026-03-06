@@ -57,20 +57,27 @@ export const sendVerificationOTP = async (email) => {
   const expiryTime = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
   const hashedOTP = await hashOTP(otp);
 
-  // Update database and send email in parallel
-  await Promise.all([
-    client.user.update({
-      where: { email: normalizedEmail },
-      data: {
-        resetPasswordOTP: hashedOTP,
-        resetPasswordOTPExpires: expiryTime,
-      },
-    }),
-    // Send email without blocking
-    sendVerificationOTPEmail(normalizedEmail, otp).catch(err => {
-      console.error('[EmailVerification] Email send failed:', err.message);
-    })
+  // Update database first (fast operation)
+  await client.user.update({
+    where: { email: normalizedEmail },
+    data: {
+      resetPasswordOTP: hashedOTP,
+      resetPasswordOTPExpires: expiryTime,
+    },
+  });
+
+  // Send email with timeout (don't block the response)
+  const emailPromise = Promise.race([
+    sendVerificationOTPEmail(normalizedEmail, otp),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Email timeout')), 10000) // 10 second timeout
+    )
   ]);
+
+  // Send email in background - don't await
+  emailPromise.catch(err => {
+    console.error('[EmailVerification] Email send failed:', err.message);
+  });
 
   return {
     success: true,

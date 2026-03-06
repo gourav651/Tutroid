@@ -29,32 +29,35 @@ export const signup = async (req, res, next) => {
       });
     }
 
-    // Call service directly
-    const result = await signupService({
-      email,
-      password,
-      role: normalizedRole,
-      phone,
-      organization
-    });
+    // Call service with timeout
+    const result = await Promise.race([
+      signupService({
+        email,
+        password,
+        role: normalizedRole,
+        phone,
+        organization
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Signup service timeout')), 15000) // 15 second timeout
+      )
+    ]);
 
-    // Send verification OTP (REQUIRED for signup)
+    // Send verification OTP (REQUIRED for signup) - Make it non-blocking
     try {
-      await sendVerificationOTP(email);
-      console.log(`[Signup] Verification OTP sent to ${email}`);
-    } catch (err) {
-      console.error("Failed to send verification OTP:", err);
-      // If email fails, delete the user and return error
-      await prisma.user.delete({ where: { id: result.user.id } }).catch(() => {});
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send verification email. Please try again.",
+      // Don't await - send email in background
+      sendVerificationOTP(email).catch(err => {
+        console.error("Failed to send verification OTP (background):", err);
       });
+      console.log(`[Signup] Verification OTP queued for ${email}`);
+    } catch (err) {
+      console.error("Failed to queue verification OTP:", err);
+      // Don't fail signup if email fails - user can request resend
     }
 
     res.status(201).json({
       success: true,
-      message: "Verification OTP sent to your email. Please verify to continue.",
+      message: "Account created successfully! Verification OTP sent to your email. Please verify to continue.",
       data: {
         user: result.user, // Don't send token yet
         email: email,
@@ -63,6 +66,15 @@ export const signup = async (req, res, next) => {
     });
   } catch (err) {
     console.error("Simple signup error:", err);
+    
+    // Handle specific timeout errors
+    if (err.message.includes('timeout')) {
+      return res.status(504).json({
+        success: false,
+        message: "Registration is taking longer than expected. Please try again.",
+      });
+    }
+    
     res.status(err.statusCode || 400).json({
       success: false,
       message: err.message || "Signup failed",
