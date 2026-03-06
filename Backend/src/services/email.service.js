@@ -10,7 +10,9 @@ let resend;
 // Initialize Resend if API key is available
 if (process.env.RESEND_API_KEY) {
   resend = new Resend(process.env.RESEND_API_KEY);
-  console.log("[Email] Using Resend for email delivery");
+  console.log("[Email] ✅ Resend initialized successfully");
+} else {
+  console.log("[Email] ⚠️  Resend API key not found, will use fallback");
 }
 
 // Create transporter - supports Resend, SendGrid, Brevo, Gmail, or Ethereal for testing
