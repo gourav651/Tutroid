@@ -66,26 +66,15 @@ export const sendVerificationOTP = async (email) => {
     },
   });
 
-  // Send email in background with better logging
-  const emailPromise = Promise.race([
-    sendVerificationOTPEmail(normalizedEmail, otp),
-    new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Email timeout')), 10000) // 10 second timeout
-    )
-  ]);
-
-  // Send email in background - don't await but log results
-  emailPromise
-    .then(() => {
-      console.log(`[EmailVerification] ✅ Email sent successfully to ${normalizedEmail}`);
-    })
-    .catch(err => {
-      console.error(`[EmailVerification] ❌ Email send failed for ${normalizedEmail}:`, err.message);
-      // Log more details for debugging
-      if (err.response) {
-        console.error(`[EmailVerification] SendGrid response:`, err.response.body);
-      }
-    });
+  // Send email with proper error handling
+  try {
+    await sendVerificationOTPEmail(normalizedEmail, otp);
+    console.log(`[EmailVerification] ✅ Email sent successfully to ${normalizedEmail}`);
+  } catch (err) {
+    console.error(`[EmailVerification] ❌ Email send failed for ${normalizedEmail}:`, err.message);
+    // Don't throw error - OTP is still valid in database
+    // User can still verify with the OTP if they received it
+  }
 
   return {
     success: true,

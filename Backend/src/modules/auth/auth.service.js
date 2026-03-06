@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { AppError } from "../../utils/AppError.js";
 import { withRetry } from "../../utils/dbHelper.js";
-import { sendVerificationOTPEmail } from "../../services/email.service.js";
+// Email service import removed - OTP functionality disabled
 
 const SALT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 10;
 

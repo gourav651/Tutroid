@@ -51,19 +51,8 @@ export const adminSignup = async (req, res) => {
       },
     });
 
-    // Send OTP email
-    try {
-      const { sendVerificationOTPEmail } = await import("../../services/email.service.js");
-      await sendVerificationOTPEmail(normalizedEmail, otp);
-    } catch (emailError) {
-      // If email fails, delete the temp user
-      await prisma.user.delete({ where: { id: tempUser.id } }).catch(() => {});
-      console.error("Failed to send admin signup OTP:", emailError);
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send verification email. Please try again.",
-      });
-    }
+    // EMAIL SENDING DISABLED - Generate OTP but don't send
+    console.log(`[AdminSignup] OTP generated for ${normalizedEmail} but email sending is disabled. OTP: ${otp}`);
 
     res.status(201).json({
       success: true,
@@ -240,17 +229,8 @@ export const resendAdminSignupOTP = async (req, res) => {
       },
     });
 
-    // Send OTP email
-    try {
-      const { sendVerificationOTPEmail } = await import("../../services/email.service.js");
-      await sendVerificationOTPEmail(normalizedEmail, otp);
-    } catch (emailError) {
-      console.error("Failed to resend admin signup OTP:", emailError);
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send verification email. Please try again.",
-      });
-    }
+    // EMAIL SENDING DISABLED - Generate OTP but don't send
+    console.log(`[AdminSignup] Resend OTP generated for ${normalizedEmail} but email sending is disabled. OTP: ${otp}`);
 
     res.status(200).json({
       success: true,

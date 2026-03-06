@@ -2,7 +2,7 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import client from "../../db.js";
 import { AppError } from "../../utils/AppError.js";
-import { sendOTPEmail, sendPasswordResetConfirmation } from "../../services/email.service.js";
+// Email service import removed - OTP functionality disabled
 
 const SALT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 4;
 const OTP_EXPIRY_MINUTES = 10;
@@ -58,22 +58,17 @@ export const adminForgotPasswordService = async (email) => {
   const expiryTime = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
   const hashedOTP = await hashOTP(otp);
 
-  // Update database and send email in parallel (non-blocking)
-  await Promise.all([
-    client.user.update({
-      where: { email: normalizedEmail },
-      data: {
-        resetPasswordOTP: hashedOTP,
-        resetPasswordOTPExpires: expiryTime,
-      },
-    }),
-    // Send email without waiting (fire and forget)
-    sendOTPEmail(normalizedEmail, otp).catch(err => {
-      console.error('[AdminForgotPassword] Email send failed:', err.message);
-    })
-  ]);
+  // Update database - EMAIL SENDING DISABLED
+  await client.user.update({
+    where: { email: normalizedEmail },
+    data: {
+      resetPasswordOTP: hashedOTP,
+      resetPasswordOTPExpires: expiryTime,
+    },
+  });
 
-  console.log(`[Admin Password Reset] OTP sent to admin: ${normalizedEmail}`);
+  // EMAIL SENDING DISABLED - Log OTP instead
+  console.log(`[AdminForgotPassword] OTP generated for ${normalizedEmail} but email sending is disabled. OTP: ${otp}`);
 
   return {
     success: true,
@@ -180,10 +175,8 @@ export const adminResetPasswordService = async (email, otp, newPassword) => {
     },
   });
 
-  // Send confirmation email (non-blocking)
-  sendPasswordResetConfirmation(normalizedEmail).catch(console.error);
-
-  console.log(`[Admin Password Reset] Password reset successful for admin: ${normalizedEmail}`);
+  // EMAIL SENDING DISABLED - Skip confirmation email
+  console.log(`[Admin Password Reset] Password reset successful for admin: ${normalizedEmail}, confirmation email disabled`);
 
   return {
     success: true,

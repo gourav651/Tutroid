@@ -6,8 +6,8 @@ const router = express.Router();
 router.get("/email-config", (req, res) => {
   const config = {
     environment: process.env.NODE_ENV,
-    hasResendKey: !!process.env.RESEND_API_KEY,
-    hasSendGridKey: !!process.env.SENDGRID_API_KEY,
+    // Email service checks removed - OTP functionality disabled
+    hasEmailConfig: false,
     fromEmail: process.env.FROM_EMAIL || 'not-set',
     timestamp: new Date().toISOString()
   };

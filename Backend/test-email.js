@@ -1,4 +1,5 @@
-import { sendVerificationOTPEmail } from './src/services/email.service.js';
+// Email service import disabled - OTP functionality disabled
+// import { sendVerificationOTPEmail } from './src/services/email.service.js';
 import dotenv from 'dotenv';
 
 dotenv.config();

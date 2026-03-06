@@ -156,10 +156,20 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await ApiService.signup(userData);
 
-      dispatch({
-        type: AUTH_ACTIONS.SIGNUP_SUCCESS,
-        payload: response.data,
-      });
+      // Handle OTP verification flow
+      if (response.success && response.requiresVerification) {
+        // Don't dispatch success yet - user needs to verify OTP first
+        dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+        return response;
+      }
+
+      // Handle direct login (if OTP is disabled)
+      if (response.success && response.data?.token) {
+        dispatch({
+          type: AUTH_ACTIONS.SIGNUP_SUCCESS,
+          payload: response.data,
+        });
+      }
 
       return response;
     } catch (error) {

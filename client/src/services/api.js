@@ -81,6 +81,13 @@ class ApiService {
       body: JSON.stringify(userData),
     });
 
+    // Handle OTP verification flow
+    if (res.success && res.requiresVerification) {
+      // Don't store token yet - user needs to verify OTP first
+      return res;
+    }
+
+    // Handle direct login (if OTP is disabled)
     if (res.success && res.data?.token) {
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
