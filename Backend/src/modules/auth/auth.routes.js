@@ -37,7 +37,7 @@ const signupLimiter = rateLimit({
 // Rate limiter for forgot password (prevent abuse)
 const forgotPasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 10 : 3, // 10 in dev, 3 in production
+  max: process.env.FORGOT_PASSWORD_RATE_LIMIT || (process.env.NODE_ENV === 'development' ? 20 : 10), // More reasonable limits
   message: {
     success: false,
     message: "Too many password reset attempts. Please try again later.",
@@ -47,7 +47,7 @@ const forgotPasswordLimiter = rateLimit({
 // Rate limiter for OTP requests (prevent abuse)
 const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'development' ? 10 : 5, // 10 in dev, 5 in production
+  max: process.env.OTP_RATE_LIMIT || (process.env.NODE_ENV === 'development' ? 20 : 10), // More reasonable limits
   message: {
     success: false,
     message: "Too many OTP requests. Please try again later.",
