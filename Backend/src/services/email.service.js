@@ -21,13 +21,16 @@ async function createBrevoTransporter() {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD,
       },
-      // Add connection timeout and socket timeout
-      connectionTimeout: 60000, // 60 seconds
-      socketTimeout: 60000, // 60 seconds
-      // Add pool configuration for better connection management
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
+      // Reduced timeouts for faster failure detection
+      connectionTimeout: 30000, // 30 seconds (reduced from 60)
+      greetingTimeout: 30000, // 30 seconds
+      socketTimeout: 45000, // 45 seconds (reduced from 60)
+      // Disable pooling to avoid connection reuse issues
+      pool: false,
+      // Add retry configuration
+      maxConnections: 1,
+      rateDelta: 1000,
+      rateLimit: 5,
     });
   }
 
@@ -58,6 +61,18 @@ let transporterPromise = createBrevoTransporter().then(t => {
   console.error("[Email] ❌ Failed to initialize transporter:", error);
   throw error;
 });
+
+/**
+ * Send email with timeout wrapper
+ */
+const sendEmailWithTimeout = async (mailOptions, timeoutMs = 30000) => {
+  return Promise.race([
+    transporter.sendMail(mailOptions),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Email send timeout exceeded')), timeoutMs)
+    )
+  ]);
+};
 
 /**
  * Send OTP email for email verification (signup)
@@ -121,7 +136,7 @@ export const sendVerificationOTPEmail = async (email, otp) => {
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendEmailWithTimeout(mailOptions, 30000);
     console.log(`[Email] ✅ Verification OTP sent to ${email}`);
     console.log(`[Email] 📧 Message ID: ${info.messageId}`);
     
@@ -206,7 +221,7 @@ export const sendOTPEmail = async (email, otp) => {
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendEmailWithTimeout(mailOptions, 30000);
     console.log(`[Email] ✅ Password reset OTP sent to ${email}`);
     console.log(`[Email] 📧 Message ID: ${info.messageId}`);
     
@@ -280,7 +295,7 @@ export const sendPasswordResetConfirmation = async (email) => {
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendEmailWithTimeout(mailOptions, 30000);
     console.log(`[Email] ✅ Password reset confirmation sent to ${email}`);
     
     // If using Ethereal, show the preview URL

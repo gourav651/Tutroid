@@ -51,8 +51,15 @@ export const adminSignup = async (req, res) => {
       },
     });
 
-    // EMAIL SENDING DISABLED - Generate OTP but don't send
-    console.log(`[AdminSignup] OTP generated for ${normalizedEmail} but email sending is disabled. OTP: ${otp}`);
+    // Send OTP email
+    try {
+      const { sendVerificationOTPEmail } = await import("../../services/email.service.js");
+      await sendVerificationOTPEmail(normalizedEmail, otp);
+      console.log(`[AdminSignup] ✅ OTP sent to ${normalizedEmail}`);
+    } catch (emailError) {
+      console.error(`[AdminSignup] ❌ Failed to send OTP email:`, emailError);
+      // Continue anyway - OTP is stored in database
+    }
 
     res.status(201).json({
       success: true,
@@ -229,8 +236,15 @@ export const resendAdminSignupOTP = async (req, res) => {
       },
     });
 
-    // EMAIL SENDING DISABLED - Generate OTP but don't send
-    console.log(`[AdminSignup] Resend OTP generated for ${normalizedEmail} but email sending is disabled. OTP: ${otp}`);
+    // Send OTP email
+    try {
+      const { sendVerificationOTPEmail } = await import("../../services/email.service.js");
+      await sendVerificationOTPEmail(normalizedEmail, otp);
+      console.log(`[AdminSignup] ✅ Resend OTP sent to ${normalizedEmail}`);
+    } catch (emailError) {
+      console.error(`[AdminSignup] ❌ Failed to send resend OTP email:`, emailError);
+      // Continue anyway - OTP is stored in database
+    }
 
     res.status(200).json({
       success: true,

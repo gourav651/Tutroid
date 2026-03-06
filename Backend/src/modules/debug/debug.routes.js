@@ -6,9 +6,11 @@ const router = express.Router();
 router.get("/email-config", (req, res) => {
   const config = {
     environment: process.env.NODE_ENV,
-    // Email service checks removed - OTP functionality disabled
-    hasEmailConfig: false,
-    fromEmail: process.env.FROM_EMAIL || 'not-set',
+    hasBrevoSMTP: !!(process.env.SMTP_USER && process.env.SMTP_PASSWORD),
+    smtpHost: process.env.SMTP_HOST || 'not-set',
+    smtpPort: process.env.SMTP_PORT || 'not-set',
+    senderEmail: process.env.SENDER_EMAIL || 'not-set',
+    hasEmailConfig: !!(process.env.SMTP_USER && process.env.SMTP_PASSWORD),
     timestamp: new Date().toISOString()
   };
 
