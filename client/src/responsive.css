@@ -1,0 +1,403 @@
+/* ========================================
+   RESPONSIVE DESIGN SYSTEM
+   Mobile-first approach with Tailwind CSS
+   ======================================== */
+
+/* ========================================
+   BREAKPOINTS
+   - Mobile: < 640px (default)
+   - Tablet: 640px - 1024px (sm, md)
+   - Laptop: 1024px - 1280px (lg)
+   - Desktop: > 1280px (xl, 2xl)
+   ======================================== */
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Responsive Container */
+.container-responsive {
+    @apply w-full mx-auto px-4 sm:px-6 lg:px-8;
+    max-width: 1536px;
+}
+
+/* Responsive Grid Layouts */
+.grid-responsive-1-2 {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6;
+}
+
+.grid-responsive-1-2-3 {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6;
+}
+
+.grid-responsive-1-2-4 {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6;
+}
+
+/* Responsive Flex */
+.flex-responsive {
+    @apply flex flex-col sm:flex-row gap-2 sm:gap-4;
+}
+
+/* ========================================
+   TYPOGRAPHY
+   ======================================== */
+
+/* Responsive Headings */
+.heading-1 {
+    @apply text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold;
+}
+
+.heading-2 {
+    @apply text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold;
+}
+
+.heading-3 {
+    @apply text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold;
+}
+
+.heading-4 {
+    @apply text-base sm:text-lg md:text-xl lg:text-2xl font-semibold;
+}
+
+/* Responsive Body Text */
+.text-responsive-xs {
+    @apply text-xs sm:text-sm;
+}
+
+.text-responsive-sm {
+    @apply text-xs sm:text-sm md:text-base;
+}
+
+.text-responsive-base {
+    @apply text-sm sm:text-base md:text-lg;
+}
+
+.text-responsive-lg {
+    @apply text-base sm:text-lg md:text-xl;
+}
+
+/* ========================================
+   SPACING
+   ======================================== */
+
+/* Responsive Padding */
+.p-responsive {
+    @apply p-4 sm:p-6 md:p-8 lg:p-10;
+}
+
+.p-responsive-sm {
+    @apply p-2 sm:p-3 md:p-4;
+}
+
+.px-responsive {
+    @apply px-4 sm:px-6 md:px-8 lg:px-10;
+}
+
+.py-responsive {
+    @apply py-4 sm:py-6 md:py-8 lg:py-10;
+}
+
+/* Responsive Margin */
+.m-responsive {
+    @apply m-2 sm:m-3 md:m-4 lg:m-6;
+}
+
+/* Responsive Gap */
+.gap-responsive {
+    @apply gap-2 sm:gap-3 md:gap-4 lg:gap-6;
+}
+
+/* ========================================
+   COMPONENTS
+   ======================================== */
+
+/* Responsive Button */
+.btn-responsive {
+    @apply w-full sm:w-auto px-4 py-2 sm:px-6 sm:py-3 text-sm sm:text-base;
+    @apply min-h-[44px];
+    /* Touch target */
+}
+
+.btn-responsive-sm {
+    @apply w-full sm:w-auto px-3 py-2 text-xs sm:text-sm;
+    @apply min-h-[40px];
+}
+
+/* Responsive Card */
+.card-responsive {
+    @apply rounded-lg sm:rounded-xl p-4 sm:p-6 md:p-8;
+}
+
+/* Responsive Modal */
+.modal-responsive {
+    @apply fixed inset-0 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:transform sm:-translate-x-1/2 sm:-translate-y-1/2;
+    @apply w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl;
+    @apply rounded-t-2xl sm:rounded-2xl;
+}
+
+/* Responsive Panel (Drawer) */
+.panel-responsive {
+    @apply fixed inset-0 sm:inset-y-0 sm:right-0;
+    @apply w-full sm:max-w-md md:max-w-lg lg:max-w-xl;
+}
+
+/* ========================================
+   LAYOUT
+   ======================================== */
+
+/* Responsive Sidebar Layout */
+.layout-with-sidebar {
+    @apply flex flex-col lg:flex-row min-h-screen;
+}
+
+.sidebar-left {
+    @apply hidden lg:block w-64 xl:w-80 flex-shrink-0;
+}
+
+.sidebar-right {
+    @apply hidden xl:block w-80 flex-shrink-0;
+}
+
+.main-content {
+    @apply flex-1 min-w-0 w-full;
+}
+
+/* Mobile Drawer */
+.mobile-drawer {
+    @apply fixed inset-y-0 left-0 w-64 sm:w-80 transform transition-transform duration-300 ease-in-out z-50;
+}
+
+.mobile-drawer-backdrop {
+    @apply fixed inset-0 bg-black/60 backdrop-blur-sm z-40;
+}
+
+/* ========================================
+   NAVIGATION
+   ======================================== */
+
+/* Responsive Navbar */
+.navbar-responsive {
+    @apply sticky top-0 z-50 w-full;
+    @apply px-4 sm:px-6 lg:px-8 py-2 sm:py-3;
+}
+
+/* Hide on Mobile, Show on Desktop */
+.nav-desktop-only {
+    @apply hidden lg:flex;
+}
+
+/* Show on Mobile, Hide on Desktop */
+.nav-mobile-only {
+    @apply flex lg:hidden;
+}
+
+/* ========================================
+   FORMS
+   ======================================== */
+
+/* Responsive Form */
+.form-responsive {
+    @apply space-y-4 sm:space-y-6;
+}
+
+.form-grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6;
+}
+
+/* Responsive Input */
+.input-responsive {
+    @apply w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base;
+    @apply min-h-[44px];
+    /* Touch target */
+}
+
+/* ========================================
+   TABLES
+   ======================================== */
+
+/* Responsive Table Wrapper */
+.table-responsive {
+    @apply overflow-x-auto -mx-4 sm:mx-0;
+}
+
+.table-responsive table {
+    @apply min-w-full;
+}
+
+/* Stack table on mobile */
+@media (max-width: 640px) {
+    .table-stack thead {
+        @apply hidden;
+    }
+
+    .table-stack tbody tr {
+        @apply block mb-4 border rounded-lg;
+    }
+
+    .table-stack tbody td {
+        @apply block text-right py-2 px-4;
+        @apply before:content-[attr(data-label)] before:float-left before:font-semibold;
+    }
+}
+
+/* ========================================
+   IMAGES & MEDIA
+   ======================================== */
+
+/* Responsive Image */
+.img-responsive {
+    @apply w-full h-auto;
+}
+
+/* Responsive Avatar */
+.avatar-responsive {
+    @apply w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16;
+}
+
+.avatar-responsive-sm {
+    @apply w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12;
+}
+
+/* Responsive Cover Image */
+.cover-responsive {
+    @apply h-32 sm:h-40 md:h-48 lg:h-64;
+}
+
+/* ========================================
+   TOUCH TARGETS
+   ======================================== */
+
+/* Minimum touch target size (44x44px) */
+.touch-target {
+    @apply min-h-[44px] min-w-[44px];
+}
+
+.touch-target-sm {
+    @apply min-h-[40px] min-w-[40px];
+}
+
+/* ========================================
+   UTILITIES
+   ======================================== */
+
+/* Hide Scrollbar */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+/* Prevent Horizontal Scroll */
+.no-horizontal-scroll {
+    @apply overflow-x-hidden max-w-full;
+}
+
+/* Safe Area (for notched devices) */
+.safe-area-top {
+    padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+/* Slide In from Right */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+.animate-slide-in-right {
+    animation: slideInRight 0.3s ease-out;
+}
+
+/* Slide In from Left */
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+.animate-slide-in-left {
+    animation: slideInLeft 0.3s ease-out;
+}
+
+/* Fade In */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    .print-full-width {
+        width: 100% !important;
+        max-width: none !important;
+    }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+/* Focus Visible */
+.focus-visible-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
+}
+
+/* Screen Reader Only */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* ========================================
+   DARK MODE SUPPORT
+   ======================================== */
+
+/* Ensure dark mode works on mobile */
+@media (prefers-color-scheme: dark) {
+    .dark-mode-auto {
+        @apply dark:bg-slate-900 dark:text-white;
+    }
+}

@@ -1,0 +1,451 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  TRAINER
+  INSTITUTION
+  STUDENT
+  ADMIN
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+}
+
+enum RequestInitiator {
+  TRAINER
+  INSTITUTION
+}
+
+enum ReviewTargetType {
+  TRAINER
+  INSTITUTION
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportTargetType {
+  TRAINER
+  MATERIAL
+  REVIEW
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  username       String    @unique
+  password       String
+  firstName      String?
+  lastName       String?
+  profilePicture String?
+  coverImage     String?
+  bio            String?
+  headline       String?
+  location       String?
+  role           Role
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  isActive       Boolean   @default(true)
+  isVerified     Boolean   @default(false)
+  isBanned       Boolean   @default(false)
+  deletedAt      DateTime?
+  
+  // Password reset fields
+  resetPasswordOTP        String?
+  resetPasswordOTPExpires DateTime?
+
+  trainerProfile     TrainerProfile?
+  institutionProfile InstitutionProfile?
+  studentProfile     StudentProfile?
+  reviews            Review[]
+  reports            Report[]
+  auditLogs          AuditLog[]
+  posts              Post[]
+  postReviews        PostReview[]
+  education          Education[]
+  experience         Experience[]
+
+  sentConnections     Connection[]   @relation("SentConnections")
+  receivedConnections Connection[]   @relation("ReceivedConnections")
+  conversations       Conversation[] @relation("UserConversations")
+  messages            Message[]
+
+  @@index([username])
+  @@index([email])
+}
+
+
+model TrainerProfile {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  uniqueId          String?   @unique // Human-readable unique identifier like "TRN001"
+  bio               String?
+  location          String?
+  experience        Int
+  skills            String[]
+  rating            Float     @default(0)
+  verified          Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  completedRequests Int       @default(0)
+  completionRate    Float     @default(0.0)
+  responseTime      Int       @default(0) // in hours
+  reputationScore   Float     @default(0.0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  user            User             @relation(fields: [userId], references: [id])
+  materials       Material[]
+  requests        Request[]
+  reviews         Review[]
+  badges          Badge[]
+  materialRatings MaterialRating[]
+  reports         Report[]
+
+  @@index([location])
+  @@index([experience])
+  @@index([rating])
+  @@index([reputationScore])
+  @@index([completedRequests])
+  @@index([uniqueId])
+}
+
+model InstitutionProfile {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  uniqueId  String?   @unique // Human-readable unique identifier like "INST001"
+  name      String
+  location  String
+  rating    Float     @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user     User      @relation(fields: [userId], references: [id])
+  requests Request[]
+  reviews  Review[]
+  reports  Report[]
+
+  @@index([location])
+  @@index([rating])
+  @@index([uniqueId])
+}
+
+model StudentProfile {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  bio       String?
+  location  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Education {
+  id           String    @id @default(uuid())
+  userId       String
+  school       String
+  degree       String?
+  fieldOfStudy String?
+  startDate    DateTime?
+  endDate      DateTime?
+  description  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Experience {
+  id          String    @id @default(uuid())
+  userId      String
+  title       String
+  company     String
+  location    String?
+  startDate   DateTime?
+  endDate     DateTime?
+  description String?
+  isCurrent   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+
+model Material {
+  id        String    @id @default(uuid())
+  title     String
+  fileUrl   String
+  trainerId String
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+  deletedAt DateTime?
+
+  trainer         TrainerProfile   @relation(fields: [trainerId], references: [id])
+  materialRatings MaterialRating[]
+  reports         Report[]
+
+  @@index([trainerId])
+  @@index([isActive])
+}
+
+model Request {
+  id            String           @id @default(uuid())
+  trainerId     String
+  institutionId String
+  initiatedBy   RequestInitiator
+  status        RequestStatus    @default(PENDING)
+
+  trainerMarkedComplete     Boolean @default(false)
+  institutionMarkedComplete Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trainer     TrainerProfile     @relation(fields: [trainerId], references: [id])
+  institution InstitutionProfile @relation(fields: [institutionId], references: [id])
+  reviews     Review[]
+
+  @@unique([trainerId, institutionId])
+  @@index([trainerId])
+  @@index([institutionId])
+  @@index([status])
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  rating     Int
+  comment    String?
+  requestId  String
+  reviewerId String
+  createdAt  DateTime @default(now())
+
+  trainerProfileId     String?
+  institutionProfileId String?
+
+  request  Request @relation(fields: [requestId], references: [id])
+  reviewer User    @relation(fields: [reviewerId], references: [id])
+
+  trainerProfile     TrainerProfile?     @relation(fields: [trainerProfileId], references: [id])
+  institutionProfile InstitutionProfile? @relation(fields: [institutionProfileId], references: [id])
+
+  @@unique([requestId, reviewerId])
+  @@index([trainerProfileId])
+  @@index([institutionProfileId])
+}
+
+model Badge {
+  id        String   @id @default(uuid())
+  name      String
+  icon      String
+  criteria  String
+  trainerId String
+  createdAt DateTime @default(now())
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id])
+
+  @@unique([trainerId, name])
+}
+
+model MaterialRating {
+  id         String   @id @default(uuid())
+  materialId String
+  studentId  String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  material         Material        @relation(fields: [materialId], references: [id])
+  trainerProfile   TrainerProfile? @relation(fields: [trainerProfileId], references: [id])
+  trainerProfileId String?
+
+  @@unique([materialId, studentId])
+  @@index([materialId])
+  @@index([studentId])
+}
+
+model Report {
+  id         String           @id @default(uuid())
+  reporterId String
+  targetId   String
+  targetType ReportTargetType
+  reason     String
+  status     ReportStatus     @default(PENDING)
+  details    String?
+  createdAt  DateTime         @default(now())
+  resolvedAt DateTime?
+  resolvedBy String?
+
+  reporter             User                @relation(fields: [reporterId], references: [id])
+  trainerProfile       TrainerProfile?     @relation(fields: [trainerProfileId], references: [id])
+  trainerProfileId     String?
+  institutionProfile   InstitutionProfile? @relation(fields: [institutionProfileId], references: [id])
+  institutionProfileId String?
+  material             Material?           @relation(fields: [materialId], references: [id])
+  materialId           String?
+
+  @@index([reporterId])
+  @@index([targetId])
+  @@index([targetType])
+  @@index([status])
+}
+
+model Post {
+  id            String    @id @default(uuid())
+  content       String
+  type          String    @default("text")
+  imageUrl      String?
+  videoUrl      String?
+  tags          String[]
+  averageRating Float     @default(0)
+  totalReviews  Int       @default(0)
+  shares        Int       @default(0)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  authorId    String
+  author      User         @relation(fields: [authorId], references: [id])
+  postReviews PostReview[]
+
+  @@index([authorId])
+  @@index([isActive])
+  @@index([createdAt])
+  @@index([type])
+  @@index([averageRating])
+}
+
+model PostReview {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  rating    Int      // 1-5 stars
+  review    String?  // Optional review text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+  @@index([rating])
+}
+
+model Connection {
+  id          String         @id @default(uuid())
+  senderId    String
+  receiverId  String
+  status      RequestStatus  @default(PENDING)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  sender   User @relation("SentConnections", fields: [senderId], references: [id])
+  receiver User @relation("ReceivedConnections", fields: [receiverId], references: [id])
+
+  @@unique([senderId, receiverId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([status])
+}
+
+model Conversation {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  participants User[]    @relation("UserConversations")
+  messages     Message[]
+
+  @@index([updatedAt])
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  content        String
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@index([conversationId, createdAt])
+  @@index([conversationId, isRead])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   // MESSAGE, REQUEST, REVIEW, CONNECTION, etc.
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model VerificationRequest {
+  id        String   @id @default(uuid())
+  userId    String
+  status    RequestStatus @default(PENDING)
+  message   String?  // Optional message from user
+  adminNote String?  // Admin's note when approving/rejecting
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reviewedAt DateTime?
+  reviewedBy String?  // Admin user ID who reviewed
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  resource  String
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+}

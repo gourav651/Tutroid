@@ -1,0 +1,70 @@
+import express from "express";
+import rateLimit from "express-rate-limit";
+import { validate } from "../../middleware/validate.middleware.js";
+import { loginSchema, signupSchema, forgotPasswordSchema, verifyOTPSchema, resetPasswordSchema } from "./auth.schema.js";
+import { login, signup } from "./auth.controller.simple.js";
+import { forgotPassword, verifyResetOTP, resetPassword } from "./passwordReset.controller.js";
+import { sendVerificationOTPController, verifyEmailController, resendVerificationOTPController } from "./emailVerification.controller.js";
+
+const router = express.Router();
+
+// Rate limiter for login (prevent brute force)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 login attempts per 15 minutes per IP
+  skipSuccessfulRequests: true, // Don't count successful logins
+  message: {
+    success: false,
+    message: "Too many login attempts. Please try again in 15 minutes.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiter for signup (prevent spam)
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // 5 signups per hour per IP
+  message: {
+    success: false,
+    message: "Too many signup attempts. Please try again later.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiter for forgot password (prevent abuse)
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'development' ? 10 : 3, // 10 in dev, 3 in production
+  message: {
+    success: false,
+    message: "Too many password reset attempts. Please try again later.",
+  },
+});
+
+// Rate limiter for OTP requests (prevent abuse)
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'development' ? 10 : 5, // 10 in dev, 5 in production
+  message: {
+    success: false,
+    message: "Too many OTP requests. Please try again later.",
+  },
+});
+
+// Auth routes with rate limiting
+router.post("/signup", signupLimiter, signup);
+router.post("/login", loginLimiter, login);
+
+// Email verification routes
+router.post("/send-verification-otp", otpLimiter, sendVerificationOTPController);
+router.post("/verify-email", verifyEmailController);
+router.post("/resend-verification-otp", otpLimiter, resendVerificationOTPController);
+
+// Password reset routes
+router.post("/forgot-password", forgotPasswordLimiter, validate(forgotPasswordSchema), forgotPassword);
+router.post("/verify-reset-otp", validate(verifyOTPSchema), verifyResetOTP);
+router.post("/reset-password", validate(resetPasswordSchema), resetPassword);
+
+export default router;

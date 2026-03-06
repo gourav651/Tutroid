@@ -1,0 +1,26 @@
+{
+  "watch": ["src"],
+  "ext": "js,json",
+  "ignore": [
+    "src/**/*.test.js",
+    "node_modules/**",
+    "storage/**",
+    "prisma/migrations/**"
+  ],
+  "delay": 2000,
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "events": {
+    "restart": "echo '🔄 Restarting server...'",
+    "crash": "echo '💥 Server crashed - waiting for changes...'"
+  },
+  "restartable": "rs",
+  "verbose": false,
+  "execMap": {
+    "js": "node"
+  },
+  "signal": "SIGTERM",
+  "legacyWatch": false,
+  "pollingInterval": 1000
+}
