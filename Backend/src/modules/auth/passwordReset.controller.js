@@ -40,22 +40,9 @@ export const forgotPassword = async (req, res, next) => {
 export const verifyResetOTP = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
-    
-    const result = await Promise.race([
-      verifyResetOTPService(email, otp),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('OTP verification timeout')), 5000)
-      )
-    ]);
-    
+    const result = await verifyResetOTPService(email, otp);
     res.status(200).json(result);
   } catch (error) {
-    if (error.message.includes('timeout')) {
-      return res.status(504).json({
-        success: false,
-        message: "Verification is taking longer than expected. Please try again.",
-      });
-    }
     next(error);
   }
 };
@@ -67,22 +54,9 @@ export const verifyResetOTP = async (req, res, next) => {
 export const resetPassword = async (req, res, next) => {
   try {
     const { email, otp, newPassword } = req.body;
-    
-    const result = await Promise.race([
-      resetPasswordService(email, otp, newPassword),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Password reset timeout')), 10000)
-      )
-    ]);
-    
+    const result = await resetPasswordService(email, otp, newPassword);
     res.status(200).json(result);
   } catch (error) {
-    if (error.message.includes('timeout')) {
-      return res.status(504).json({
-        success: false,
-        message: "Password reset is taking longer than expected. Please try again.",
-      });
-    }
     next(error);
   }
 };
