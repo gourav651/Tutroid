@@ -141,24 +141,25 @@ export const sendVerificationOTPEmail = async (email, otp) => {
 
       if (error) {
         console.error("[Email] ❌ Resend API error:", error);
-        console.error("[Email] ❌ Error details:", JSON.stringify(error, null, 2));
-        throw new Error(`Resend API error: ${error.message || 'Unknown error'}`);
+        console.log("[Email] 🔄 Falling back to alternative email service");
+        // Don't throw error, fall through to fallback
+      } else {
+        console.log(`[Email] ✅ Verification OTP sent to ${email} via Resend`);
+        console.log(`[Email] 📧 Message ID: ${data.id}`);
+        return { success: true };
       }
-
-      console.log(`[Email] ✅ Verification OTP sent to ${email} via Resend`);
-      console.log(`[Email] 📧 Message ID: ${data.id}`);
-      console.log(`[Email] 📊 Resend response:`, JSON.stringify(data, null, 2));
       return { success: true };
     } catch (error) {
       console.error("[Email] ❌ Error sending verification OTP via Resend:", error);
-      console.error("[Email] ❌ Full error object:", JSON.stringify(error, null, 2));
-      throw new Error("Failed to send verification OTP email");
+      console.log("[Email] 🔄 Falling back to alternative email service");
+      // Don't throw error, fall through to fallback
     }
   } else {
     console.log(`[Email] ⚠️  Resend not available, using fallback for ${email}`);
-    console.log(`[Email] 🔍 Debug - RESEND_API_KEY exists: ${!!process.env.RESEND_API_KEY}`);
-    console.log(`[Email] 🔍 Debug - resend object exists: ${!!resend}`);
   }
+  
+  // Fallback to nodemailer-based services (Brevo/SendGrid/Gmail)
+  console.log(`[Email] 📮 Using fallback email service for ${email}`);
   
   // Fallback to existing email service (SendGrid/Gmail/etc)
   const senderEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER || "noreply@tutroid.com";
@@ -239,19 +240,22 @@ export const sendOTPEmail = async (email, otp) => {
 
       if (error) {
         console.error("[Email] ❌ Resend error:", error);
-        throw new Error("Failed to send OTP email");
+        console.log("[Email] 🔄 Falling back to alternative email service");
+        // Don't throw error, fall through to fallback
+      } else {
+        console.log(`[Email] ✅ Password reset OTP sent to ${email} via Resend`);
+        console.log(`[Email] Message ID: ${data.id}`);
+        return { success: true, messageId: data.id };
       }
-
-      console.log(`[Email] ✅ Password reset OTP sent to ${email} via Resend`);
-      console.log(`[Email] Message ID: ${data.id}`);
-      return { success: true, messageId: data.id };
     } catch (error) {
       console.error("[Email] ❌ Error sending OTP via Resend:", error);
-      throw new Error("Failed to send OTP email");
+      console.log("[Email] 🔄 Falling back to alternative email service");
+      // Don't throw error, fall through to fallback
     }
   }
   
-  // Fallback to existing email service
+  // Fallback to nodemailer-based services (Brevo/SendGrid/Gmail)
+  console.log(`[Email] 📮 Using fallback email service for password reset to ${email}`);
   const senderEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER || "noreply@tutroid.com";
   
   const mailOptions = {
