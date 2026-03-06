@@ -2,7 +2,7 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import client from "../../db.js";
 import { AppError } from "../../utils/AppError.js";
-// Email service import removed - OTP functionality disabled
+import { sendOTPEmail, sendPasswordResetConfirmation } from "../../services/email.service.js";
 
 const SALT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 4; // Reduced from 10 to 4 for faster hashing
 const OTP_EXPIRY_MINUTES = 10;
@@ -30,7 +30,7 @@ const verifyOTP = async (otp, hashedOTP) => {
 };
 
 /**
- * Request password reset - send OTP - DISABLED
+ * Request password reset - send OTP
  */
 export const forgotPasswordService = async (email) => {
   const normalizedEmail = email.toLowerCase().trim();
@@ -54,7 +54,7 @@ export const forgotPasswordService = async (email) => {
     };
   }
 
-  // Generate OTP but don't send email
+  // Generate OTP
   const otp = generateOTP();
   
   // Calculate expiry time and hash OTP
@@ -75,8 +75,12 @@ export const forgotPasswordService = async (email) => {
     )
   ]);
 
-  // EMAIL SENDING DISABLED - Log OTP instead
-  console.log(`[PasswordReset] OTP generated for ${normalizedEmail} but email sending is disabled. OTP: ${otp}`);
+  // Send email in background - don't wait for it
+  sendOTPEmail(normalizedEmail, otp).catch(err => {
+    console.error('[ForgotPassword] Email send failed:', err.message);
+  });
+
+  console.log(`[PasswordReset] OTP sent to ${normalizedEmail}. OTP: ${otp}`);
 
   return {
     success: true,
@@ -165,8 +169,8 @@ export const resetPasswordService = async (email, otp, newPassword) => {
     },
   });
 
-  // EMAIL SENDING DISABLED - Skip confirmation email
-  console.log(`[PasswordReset] Password reset successful for ${normalizedEmail}, confirmation email disabled`);
+  // Send confirmation email (non-blocking)
+  sendPasswordResetConfirmation(normalizedEmail).catch(console.error);
 
   return {
     success: true,
