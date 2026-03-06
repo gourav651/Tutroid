@@ -102,6 +102,17 @@ export const signup = async (req, res, next) => {
     try {
       await sendVerificationOTP(normalizedEmail);
       console.log(`[Signup] Verification OTP sent to ${normalizedEmail}`);
+      
+      return res.status(201).json({
+        success: true,
+        message: "Verification OTP sent to your email. Please verify to complete registration.",
+        data: {
+          email: normalizedEmail,
+          message: "Account will be created after email verification"
+        },
+        requiresVerification: true,
+        nextStep: "Check your email for the verification code and use the verify-email endpoint."
+      });
     } catch (err) {
       console.error("Failed to send verification OTP:", err);
       // If email fails, delete the temporary user
@@ -111,17 +122,6 @@ export const signup = async (req, res, next) => {
         message: "Failed to send verification email. Please try again.",
       });
     }
-
-    res.status(201).json({
-      success: true,
-      message: "Verification OTP sent to your email. Please verify to complete registration.",
-      data: {
-        email: normalizedEmail,
-        message: "Account will be created after email verification"
-      },
-      requiresVerification: true,
-      nextStep: "Check your email for the verification code and use the verify-email endpoint."
-    });
   } catch (err) {
     console.error("Simple signup error:", err);
     

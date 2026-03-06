@@ -66,14 +66,27 @@ export const sendVerificationOTP = async (email) => {
     },
   });
 
-  // Send email with proper error handling
+  // Send email with proper error handling and timeout
   try {
-    await sendVerificationOTPEmail(normalizedEmail, otp);
+    // Add timeout wrapper for email sending
+    const emailPromise = sendVerificationOTPEmail(normalizedEmail, otp);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Email timeout after 30 seconds')), 30000)
+    );
+    
+    await Promise.race([emailPromise, timeoutPromise]);
     console.log(`[EmailVerification] ✅ Email sent successfully to ${normalizedEmail}`);
   } catch (err) {
     console.error(`[EmailVerification] ❌ Email send failed for ${normalizedEmail}:`, err.message);
-    // Don't throw error - OTP is still valid in database
-    // User can still verify with the OTP if they received it
+    
+    // For timeout errors, still return success but log the issue
+    if (err.message.includes('timeout') || err.message.includes('ETIMEDOUT')) {
+      console.log(`[EmailVerification] ⚠️ Email timeout for ${normalizedEmail}, but OTP is valid in database`);
+      // Don't throw error - user can still use OTP if they received it
+    } else {
+      // For other errors, throw to trigger error handling
+      throw new Error("Failed to send verification OTP email");
+    }
   }
 
   return {

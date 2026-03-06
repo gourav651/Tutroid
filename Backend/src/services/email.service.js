@@ -21,6 +21,13 @@ async function createBrevoTransporter() {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD,
       },
+      // Add connection timeout and socket timeout
+      connectionTimeout: 60000, // 60 seconds
+      socketTimeout: 60000, // 60 seconds
+      // Add pool configuration for better connection management
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
     });
   }
 
