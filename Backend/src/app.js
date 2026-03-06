@@ -45,7 +45,7 @@ app.set('trust proxy', true);
 /* ================= SECURITY ================= */
 
 // Request timeout middleware (must be early in the chain)
-app.use(requestTimeout(30000)); // 30 second timeout
+app.use(requestTimeout(15000)); // 15 second timeout (reduced from 30)
 
 // CORS must be before helmet
 app.use(
@@ -103,6 +103,15 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     version: process.env.npm_package_version || "1.0.0",
+  });
+});
+
+// Quick signup health check
+app.get("/api/v1/auth/health", (req, res) => {
+  res.json({
+    status: "healthy",
+    service: "auth",
+    timestamp: new Date().toISOString(),
   });
 });
 

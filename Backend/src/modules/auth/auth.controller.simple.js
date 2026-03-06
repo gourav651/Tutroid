@@ -45,22 +45,25 @@ export const signup = async (req, res, next) => {
           message: "Email already registered and verified. Please login instead.",
         });
       } else {
-        // User exists but not verified - resend OTP
-        try {
-          await sendVerificationOTP(normalizedEmail);
-          return res.status(200).json({
-            success: true,
-            message: "Account already exists but not verified. New verification OTP sent to your email.",
-            data: { email: normalizedEmail },
-            requiresVerification: true
-          });
-        } catch (err) {
-          console.error("Failed to resend verification OTP:", err);
-          return res.status(500).json({
-            success: false,
-            message: "Failed to send verification email. Please try again.",
-          });
-        }
+        // User exists but not verified - resend OTP (non-blocking)
+        const emailPromise = sendVerificationOTP(normalizedEmail).catch(err => {
+          console.error("Background resend OTP failed:", err.message);
+        });
+
+        // Respond immediately
+        const response = {
+          success: true,
+          message: "Account already exists but not verified. New verification OTP sent to your email.",
+          data: { email: normalizedEmail },
+          requiresVerification: true
+        };
+
+        // Log email result in background
+        emailPromise.then(() => {
+          console.log(`[Signup] ✅ Background resend OTP sent to ${normalizedEmail}`);
+        });
+
+        return res.status(200).json(response);
       }
     }
 
@@ -98,30 +101,30 @@ export const signup = async (req, res, next) => {
       }
     });
 
-    // Send verification OTP
-    try {
-      await sendVerificationOTP(normalizedEmail);
-      console.log(`[Signup] Verification OTP sent to ${normalizedEmail}`);
-      
-      return res.status(201).json({
-        success: true,
-        message: "Verification OTP sent to your email. Please verify to complete registration.",
-        data: {
-          email: normalizedEmail,
-          message: "Account will be created after email verification"
-        },
-        requiresVerification: true,
-        nextStep: "Check your email for the verification code and use the verify-email endpoint."
-      });
-    } catch (err) {
-      console.error("Failed to send verification OTP:", err);
-      // If email fails, delete the temporary user
-      await prisma.user.delete({ where: { id: tempUser.id } }).catch(() => {});
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send verification email. Please try again.",
-      });
-    }
+    // Send verification OTP (non-blocking)
+    // Don't wait for email to send - respond immediately and send email in background
+    const emailPromise = sendVerificationOTP(normalizedEmail).catch(err => {
+      console.error("Background email send failed:", err.message);
+    });
+
+    // Respond immediately to prevent gateway timeout
+    res.status(201).json({
+      success: true,
+      message: "Verification OTP sent to your email. Please verify to complete registration.",
+      data: {
+        email: normalizedEmail,
+        message: "Account will be created after email verification"
+      },
+      requiresVerification: true,
+      nextStep: "Check your email for the verification code and use the verify-email endpoint."
+    });
+
+    // Log email result in background
+    emailPromise.then(() => {
+      console.log(`[Signup] ✅ Background email sent successfully to ${normalizedEmail}`);
+    }).catch(err => {
+      console.error(`[Signup] ❌ Background email failed for ${normalizedEmail}:`, err.message);
+    });
   } catch (err) {
     console.error("Simple signup error:", err);
     
