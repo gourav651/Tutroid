@@ -57,12 +57,19 @@ export const signup = async (req, res, next) => {
 
     res.status(201).json({
       success: true,
-      message: "Account created successfully! Verification OTP sent to your email. Please verify to continue.",
+      message: "Account created successfully! Please check your email and verify your account before logging in.",
       data: {
-        user: result.user, // Don't send token yet
+        user: {
+          id: result.user.id,
+          email: result.user.email,
+          username: result.user.username,
+          role: result.user.role,
+          isVerified: false
+        },
         email: email,
       },
-      requiresVerification: true, // Changed to true - verification is REQUIRED
+      requiresVerification: true,
+      nextStep: "Please check your email for the verification code and use the verify-email endpoint."
     });
   } catch (err) {
     console.error("Simple signup error:", err);

@@ -218,7 +218,10 @@ export const loginService = async ({ email, password }) => {
     throw new AppError("Invalid email or password", 401);
   }
 
-  // Email verification removed - users can login without verification
+  // SECURITY: Require email verification before login
+  if (!user.isVerified) {
+    throw new AppError("Please verify your email address before logging in. Check your inbox for the verification code.", 403);
+  }
 
   const token = jwt.sign(
     {
