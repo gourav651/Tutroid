@@ -133,22 +133,6 @@ app.use("/api/material", materialRoutes);
 app.use("/api/material-rating", materialRatingRoutes);
 app.use("/api/reports", reportRoutes);
 
-/* ================= SERVE FRONTEND (Production) ================= */
-
-if (process.env.NODE_ENV === "production") {
-  const clientBuild = path.join(__dirname, "../../client/dist");
-
-  app.use(express.static(clientBuild));
-
-  app.use((req, res, next) => {
-    if (req.path.startsWith("/api") || req.path === "/health") {
-      return next();
-    }
-
-    res.sendFile(path.join(clientBuild, "index.html"));
-  });
-}
-
 /* ================= ERROR HANDLER ================= */
 
 app.use(errorHandler);
