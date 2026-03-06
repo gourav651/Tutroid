@@ -7,6 +7,9 @@ let transporter;
 
 // Create transporter - supports SendGrid, Brevo, Gmail, or Ethereal for testing
 async function createTransporter() {
+  console.log(`[Email] Environment: ${process.env.NODE_ENV}`);
+  console.log(`[Email] SendGrid API Key available: ${process.env.SENDGRID_API_KEY ? 'YES' : 'NO'}`);
+  
   // Option 1: SendGrid (Recommended - 100 emails/day free)
   if (process.env.SENDGRID_API_KEY) {
     console.log("[Email] Using SendGrid for email delivery");
@@ -104,7 +107,9 @@ export const sendVerificationOTPEmail = async (email, otp) => {
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log(`[Email] Verification OTP sent to ${email}`);
+    console.log(`[Email] ✅ Verification OTP sent to ${email}`);
+    console.log(`[Email] Message ID: ${info.messageId}`);
+    console.log(`[Email] Response: ${info.response}`);
     
     // If using Ethereal, show the preview URL
     if (info.ethereal) {
@@ -114,7 +119,12 @@ export const sendVerificationOTPEmail = async (email, otp) => {
     
     return { success: true };
   } catch (error) {
-    console.error("[Email] Error sending verification OTP:", error);
+    console.error("[Email] ❌ Error sending verification OTP:", error);
+    console.error("[Email] Error details:", {
+      message: error.message,
+      code: error.code,
+      response: error.response?.body || error.response
+    });
     throw new Error("Failed to send verification OTP email");
   }
 };

@@ -38,6 +38,9 @@ const app = express();
 
 console.log("APP FILE LOADED - CORS FIXED");
 
+// Trust proxy for Render deployment
+app.set('trust proxy', true);
+
 /* ================= SECURITY ================= */
 
 // Request timeout middleware (must be early in the chain)

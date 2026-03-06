@@ -66,7 +66,7 @@ export const sendVerificationOTP = async (email) => {
     },
   });
 
-  // Send email with timeout (don't block the response)
+  // Send email in background with better logging
   const emailPromise = Promise.race([
     sendVerificationOTPEmail(normalizedEmail, otp),
     new Promise((_, reject) => 
@@ -74,10 +74,18 @@ export const sendVerificationOTP = async (email) => {
     )
   ]);
 
-  // Send email in background - don't await
-  emailPromise.catch(err => {
-    console.error('[EmailVerification] Email send failed:', err.message);
-  });
+  // Send email in background - don't await but log results
+  emailPromise
+    .then(() => {
+      console.log(`[EmailVerification] ✅ Email sent successfully to ${normalizedEmail}`);
+    })
+    .catch(err => {
+      console.error(`[EmailVerification] ❌ Email send failed for ${normalizedEmail}:`, err.message);
+      // Log more details for debugging
+      if (err.response) {
+        console.error(`[EmailVerification] SendGrid response:`, err.response.body);
+      }
+    });
 
   return {
     success: true,
