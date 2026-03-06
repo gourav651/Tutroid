@@ -137,11 +137,14 @@ app.use("/api/reports", reportRoutes);
 
 if (process.env.NODE_ENV === "production") {
   const clientBuild = path.join(__dirname, "../../client/dist");
+
   app.use(express.static(clientBuild));
-  app.get("/*", (req, res, next) => {
+
+  app.use((req, res, next) => {
     if (req.path.startsWith("/api") || req.path === "/health") {
       return next();
     }
+
     res.sendFile(path.join(clientBuild, "index.html"));
   });
 }
