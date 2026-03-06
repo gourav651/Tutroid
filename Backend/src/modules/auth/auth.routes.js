@@ -24,7 +24,7 @@ const loginLimiter = rateLimit({
 // Rate limiter for signup (prevent spam)
 const signupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: process.env.SIGNUP_RATE_LIMIT || (process.env.NODE_ENV === 'development' ? 50 : 20),
+  max: process.env.SIGNUP_RATE_LIMIT || Math.min(50, parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 20),
   message: {
     success: false,
     message: "Too many signup attempts. Please try again later.",
