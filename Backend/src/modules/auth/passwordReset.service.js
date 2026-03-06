@@ -35,11 +35,16 @@ const verifyOTP = async (otp, hashedOTP) => {
 export const forgotPasswordService = async (email) => {
   const normalizedEmail = email.toLowerCase().trim();
 
-  // Find user (don't reveal if email exists or not)
-  const user = await client.user.findUnique({
-    where: { email: normalizedEmail },
-    select: { id: true, email: true } // Only select needed fields for speed
-  });
+  // Find user with timeout (don't reveal if email exists or not)
+  const user = await Promise.race([
+    client.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, email: true } // Only select needed fields for speed
+    }),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database lookup timeout')), 5000)
+    )
+  ]);
 
   // Always return generic message (prevent user enumeration)
   if (!user) {
@@ -52,12 +57,12 @@ export const forgotPasswordService = async (email) => {
   // Generate OTP
   const otp = generateOTP();
   
-  // Parallel execution: Hash OTP and calculate expiry time simultaneously
+  // Calculate expiry time and hash OTP
   const expiryTime = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
   const hashedOTP = await hashOTP(otp);
 
-  // Update database and send email in parallel (non-blocking)
-  const [updateResult] = await Promise.all([
+  // Update database first (fast operation)
+  await Promise.race([
     client.user.update({
       where: { email: normalizedEmail },
       data: {
@@ -65,11 +70,15 @@ export const forgotPasswordService = async (email) => {
         resetPasswordOTPExpires: expiryTime,
       },
     }),
-    // Send email without waiting (fire and forget)
-    sendOTPEmail(normalizedEmail, otp).catch(err => {
-      console.error('[ForgotPassword] Email send failed:', err.message);
-    })
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database update timeout')), 5000)
+    )
   ]);
+
+  // Send email in background - don't wait for it
+  sendOTPEmail(normalizedEmail, otp).catch(err => {
+    console.error('[ForgotPassword] Email send failed:', err.message);
+  });
 
   return {
     success: true,
