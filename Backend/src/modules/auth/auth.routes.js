@@ -21,6 +21,7 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+
 // Rate limiter for signup (prevent spam)
 const signupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
