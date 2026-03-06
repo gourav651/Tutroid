@@ -1,16 +1,32 @@
 import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import dotenv from "dotenv";
 
 dotenv.config();
 
 let transporter;
+let resend;
 
-// Create transporter - supports SendGrid, Brevo, Gmail, or Ethereal for testing
+// Initialize Resend if API key is available
+if (process.env.RESEND_API_KEY) {
+  resend = new Resend(process.env.RESEND_API_KEY);
+  console.log("[Email] Using Resend for email delivery");
+}
+
+// Create transporter - supports Resend, SendGrid, Brevo, Gmail, or Ethereal for testing
 async function createTransporter() {
   console.log(`[Email] Environment: ${process.env.NODE_ENV}`);
+  console.log(`[Email] Resend API Key available: ${process.env.RESEND_API_KEY ? 'YES' : 'NO'}`);
   console.log(`[Email] SendGrid API Key available: ${process.env.SENDGRID_API_KEY ? 'YES' : 'NO'}`);
   
-  // Option 1: SendGrid (Recommended - 100 emails/day free)
+  // Option 1: Resend (Recommended for Render)
+  if (process.env.RESEND_API_KEY) {
+    console.log("[Email] Using Resend for email delivery");
+    // Return a dummy transporter since we'll use Resend API directly
+    return { isResend: true };
+  }
+  
+  // Option 2: SendGrid (Fallback)
   if (process.env.SENDGRID_API_KEY) {
     console.log("[Email] Using SendGrid for email delivery");
     return nodemailer.createTransport({
@@ -83,6 +99,44 @@ export const sendVerificationOTPEmail = async (email, otp) => {
   // Wait for transporter to be ready
   await transporterPromise;
   
+  // Use Resend if available
+  if (process.env.RESEND_API_KEY && resend) {
+    try {
+      const { data, error } = await resend.emails.send({
+        from: 'Tutroid <onboarding@resend.dev>',
+        to: [email],
+        subject: 'Verify Your Email - Tutroid',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Welcome to Tutroid!</h2>
+            <p>Hello,</p>
+            <p>Thank you for signing up. Please verify your email address using the OTP below:</p>
+            <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
+              <h1 style="color: #3b82f6; font-size: 32px; letter-spacing: 8px; margin: 0;">${otp}</h1>
+            </div>
+            <p><strong>This OTP will expire in 10 minutes.</strong></p>
+            <p>If you didn't create an account with Tutroid, please ignore this email.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #666; font-size: 12px;">This is an automated email. Please do not reply.</p>
+          </div>
+        `,
+      });
+
+      if (error) {
+        console.error("[Email] ❌ Resend error:", error);
+        throw new Error("Failed to send verification OTP email");
+      }
+
+      console.log(`[Email] ✅ Verification OTP sent to ${email} via Resend`);
+      console.log(`[Email] Message ID: ${data.id}`);
+      return { success: true };
+    } catch (error) {
+      console.error("[Email] ❌ Error sending verification OTP via Resend:", error);
+      throw new Error("Failed to send verification OTP email");
+    }
+  }
+  
+  // Fallback to existing email service (SendGrid/Gmail/etc)
   const senderEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER || "noreply@tutroid.com";
   
   const mailOptions = {
@@ -136,6 +190,44 @@ export const sendOTPEmail = async (email, otp) => {
   // Wait for transporter to be ready
   await transporterPromise;
   
+  // Use Resend if available
+  if (process.env.RESEND_API_KEY && resend) {
+    try {
+      const { data, error } = await resend.emails.send({
+        from: 'Tutroid <onboarding@resend.dev>',
+        to: [email],
+        subject: 'Password Reset OTP - Tutroid',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Password Reset Request</h2>
+            <p>Hello,</p>
+            <p>You requested a password reset for your account. Use the following OTP to reset your password:</p>
+            <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px;">
+              <h1 style="color: #3b82f6; font-size: 32px; letter-spacing: 8px; margin: 0;">${otp}</h1>
+            </div>
+            <p><strong>This OTP will expire in 10 minutes.</strong></p>
+            <p>If you didn't request this password reset, please ignore this email or contact support if you have concerns.</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #666; font-size: 12px;">This is an automated email. Please do not reply.</p>
+          </div>
+        `,
+      });
+
+      if (error) {
+        console.error("[Email] ❌ Resend error:", error);
+        throw new Error("Failed to send OTP email");
+      }
+
+      console.log(`[Email] ✅ Password reset OTP sent to ${email} via Resend`);
+      console.log(`[Email] Message ID: ${data.id}`);
+      return { success: true, messageId: data.id };
+    } catch (error) {
+      console.error("[Email] ❌ Error sending OTP via Resend:", error);
+      throw new Error("Failed to send OTP email");
+    }
+  }
+  
+  // Fallback to existing email service
   const senderEmail = process.env.FROM_EMAIL || process.env.EMAIL_USER || "noreply@tutroid.com";
   
   const mailOptions = {
