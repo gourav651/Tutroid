@@ -1,28 +1,75 @@
 import prisma from "../db.js";
 
+// Async audit logging queue to prevent blocking requests
+const auditQueue = [];
+let isProcessingQueue = false;
+
+const processAuditQueue = async () => {
+  if (isProcessingQueue || auditQueue.length === 0) return;
+  
+  isProcessingQueue = true;
+  const batch = auditQueue.splice(0, 10); // Process in batches of 10
+  
+  try {
+    await prisma.auditLog.createMany({
+      data: batch,
+      skipDuplicates: true,
+    });
+  } catch (error) {
+    console.error('Failed to create audit logs:', error);
+  }
+  
+  isProcessingQueue = false;
+  
+  // Process remaining items
+  if (auditQueue.length > 0) {
+    setTimeout(processAuditQueue, 100);
+  }
+};
+
 export const auditMiddleware = (req, res, next) => {
   const originalSend = res.send;
+  let responseSent = false;
 
   res.send = function (data) {
-    // Log successful operations (status codes < 400)
-    if (res.statusCode < 400 && req.user) {
-      prisma.auditLog.create({
-        data: {
-          userId: req.user.id,
-          action: `${req.method} ${req.path}`,
-          resource: req.path,
-          details: {
-            body: req.body,
-            query: req.query,
-            params: req.params,
-            statusCode: res.statusCode
-          },
-          ipAddress: req.ip,
-          userAgent: req.get('User-Agent')
-        }
-      }).catch(error => {
-        console.error('Failed to create audit log:', error);
+    // Prevent double-sending
+    if (responseSent) return;
+    responseSent = true;
+
+    // Only log sensitive operations, not every request
+    const sensitiveOperations = [
+      'POST', 'PUT', 'PATCH', 'DELETE'
+    ];
+    
+    const sensitivePaths = [
+      '/auth/', '/admin/', '/users/', '/verification/'
+    ];
+    
+    const shouldLog = (
+      res.statusCode < 400 && 
+      req.user && 
+      (sensitiveOperations.includes(req.method) || 
+       sensitivePaths.some(path => req.path.includes(path)))
+    );
+
+    if (shouldLog) {
+      // Add to queue instead of blocking request
+      auditQueue.push({
+        userId: req.user.id,
+        action: `${req.method} ${req.path}`,
+        resource: req.path,
+        details: {
+          statusCode: res.statusCode,
+          // Only log essential data to reduce payload
+          ...(req.method !== 'GET' && { body: req.body }),
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        createdAt: new Date(),
       });
+      
+      // Process queue asynchronously
+      setImmediate(processAuditQueue);
     }
 
     originalSend.call(this, data);
@@ -33,18 +80,20 @@ export const auditMiddleware = (req, res, next) => {
 
 export const logAction = async (userId, action, resource, details = {}) => {
   try {
-    await prisma.auditLog.create({
-      data: {
-        userId,
-        action,
-        resource,
-        details,
-        ipAddress: details.ipAddress,
-        userAgent: details.userAgent
-      }
+    // Add to queue instead of immediate database write
+    auditQueue.push({
+      userId,
+      action,
+      resource,
+      details,
+      ipAddress: details.ipAddress,
+      userAgent: details.userAgent,
+      createdAt: new Date(),
     });
+    
+    setImmediate(processAuditQueue);
   } catch (error) {
-    console.error('Failed to log action:', error);
+    console.error('Failed to queue audit log:', error);
   }
 };
 

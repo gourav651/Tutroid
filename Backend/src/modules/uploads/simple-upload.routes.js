@@ -6,19 +6,24 @@ import cloudinary from "../../config/cloudinary.js";
 
 const router = express.Router();
 
-// Configure Cloudinary storage for simple uploads
+// Configure Cloudinary storage for simple uploads with optimizations
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
-    // Determine resource type based on file type
+
     const isPDF = file.mimetype === "application/pdf";
     
     return {
       folder: "uploads",
       allowed_formats: ["jpg", "jpeg", "png", "pdf", "webp"],
-      resource_type: isPDF ? "raw" : "auto", // Use 'raw' for PDFs to preserve them
-      transformation: isPDF ? [] : [{ quality: "auto" }], // No transformation for PDFs
-      public_id: `${Date.now()}-${file.originalname.replace(/\.[^/.]+$/, "")}`, // Custom filename
+      resource_type: isPDF ? "raw" : "image", // Explicitly set to 'image' for images
+
+      transformation: isPDF ? [] : [
+        { quality: "auto:good", fetch_format: "auto" },
+        { width: 1200, crop: "limit" },
+      ],
+      // Don't set public_id, let Cloudinary generate it
+      timeout: 60000, // 60 second timeout for Cloudinary
     };
   },
 });
@@ -26,7 +31,7 @@ const storage = new CloudinaryStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 5 * 1024 * 1024, // Back to 5MB for better user experience
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
@@ -48,8 +53,27 @@ const upload = multer({
 router.post(
   "/upload",
   authMiddleware(["TRAINER", "INSTITUTION"]),
-  upload.single("file"),
-  (req, res) => {
+  (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+      if (err) {
+        console.error('Multer error:', err);
+        
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({
+            success: false,
+            message: "File too large. Maximum size is 5MB.",
+          });
+        }
+        
+        return res.status(400).json({
+          success: false,
+          message: err.message || "File upload failed",
+        });
+      }
+      next();
+    });
+  },
+  async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({
@@ -58,17 +82,7 @@ router.post(
         });
       }
 
-      console.log('File uploaded to Cloudinary:', {
-        filename: req.file.filename,
-        path: req.file.path,
-        size: req.file.size,
-        mimetype: req.file.mimetype,
-        resourceType: req.file.resource_type,
-        format: req.file.format
-      });
-
       // Always use Cloudinary secure HTTPS URL
-      // req.file.path from Cloudinary is already the full HTTPS URL
       const fileUrl = req.file.path;
 
       // Verify it's a valid Cloudinary URL
@@ -80,26 +94,23 @@ router.post(
         });
       }
 
-      console.log('Returning Cloudinary URL:', fileUrl);
-
-      res.status(200).json({
+      // Return minimal response for faster processing
+      return res.status(200).json({
         success: true,
         message: "File uploaded successfully",
         data: {
-          filename: req.file.filename,
-          originalName: req.file.originalname,
-          size: req.file.size,
-          mimetype: req.file.mimetype,
-          url: fileUrl, // Full Cloudinary HTTPS URL
-          publicId: req.file.filename, // Cloudinary public ID for reference
+          url: fileUrl,
+          publicId: req.file.filename,
         },
       });
     } catch (error) {
       console.error('Upload error:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || "Failed to upload file",
-      });
+      if (!res.headersSent) {
+        return res.status(500).json({
+          success: false,
+          message: error.message || "Failed to upload file",
+        });
+      }
     }
   },
 );

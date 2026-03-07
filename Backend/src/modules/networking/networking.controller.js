@@ -16,7 +16,8 @@ export const sendRequest = async (req, res, next) => {
                     { senderId, receiverId },
                     { senderId: receiverId, receiverId: senderId }
                 ]
-            }
+            },
+            select: { id: true }, // Minimal selection
         });
 
         if (existing) {
@@ -28,10 +29,32 @@ export const sendRequest = async (req, res, next) => {
                 senderId,
                 receiverId,
                 status: "PENDING"
+            },
+            select: {
+                id: true,
+                status: true,
+                createdAt: true,
+            },
+        });
+
+        // Create notification asynchronously (non-blocking)
+        setImmediate(async () => {
+            try {
+                await prisma.notification.create({
+                    data: {
+                        userId: receiverId,
+                        type: "CONNECTION",
+                        title: "New Connection Request",
+                        message: "Someone wants to connect with you",
+                        link: `/networking`,
+                    },
+                });
+            } catch (error) {
+                console.error('Notification creation error:', error);
             }
         });
 
-        res.status(201).json({ success: true, data: connection });
+        return res.status(201).json({ success: true, data: connection });
     } catch (error) {
         next(error);
     }
@@ -79,12 +102,39 @@ export const getNetwork = async (req, res, next) => {
                     { receiverId: userId, status: "ACCEPTED" }
                 ]
             },
-            include: {
+            select: {
+                id: true,
+                senderId: true,
+                receiverId: true,
                 sender: {
-                    select: { id: true, firstName: true, lastName: true, email: true, role: true, trainerProfile: true, institutionProfile: true }
+                    select: { 
+                        id: true, 
+                        firstName: true, 
+                        lastName: true, 
+                        role: true, 
+                        profilePicture: true,
+                        trainerProfile: {
+                            select: { bio: true, location: true }
+                        }, 
+                        institutionProfile: {
+                            select: { name: true, location: true }
+                        }
+                    }
                 },
                 receiver: {
-                    select: { id: true, firstName: true, lastName: true, email: true, role: true, trainerProfile: true, institutionProfile: true }
+                    select: { 
+                        id: true, 
+                        firstName: true, 
+                        lastName: true, 
+                        role: true, 
+                        profilePicture: true,
+                        trainerProfile: {
+                            select: { bio: true, location: true }
+                        }, 
+                        institutionProfile: {
+                            select: { name: true, location: true }
+                        }
+                    }
                 }
             }
         });

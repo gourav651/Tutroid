@@ -283,14 +283,20 @@ export const advancedSearch = async (req, res, next) => {
 
 export const getAvailableSkills = async (req, res, next) => {
     try {
-        const trainers = await prisma.trainerProfile.findMany({
-            where: { isActive: true },
-            select: { skills: true }
-        });
+        // Use raw SQL for better performance instead of loading all data into memory
+        const result = await prisma.$queryRaw`
+            SELECT DISTINCT unnest(skills) as skill 
+            FROM "TrainerProfile" 
+            WHERE "isActive" = true 
+            AND skills IS NOT NULL 
+            AND array_length(skills, 1) > 0
+            ORDER BY skill ASC
+        `;
 
-        const allSkills = trainers.flatMap(t => t.skills);
-        const uniqueSkills = [...new Set(allSkills)].sort();
+        const uniqueSkills = result.map(row => row.skill);
 
+        // Cache the response for 5 minutes
+        res.set('Cache-Control', 'public, max-age=300');
         res.json({ success: true, data: uniqueSkills });
     } catch (error) {
         next(error);

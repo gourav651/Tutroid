@@ -231,6 +231,9 @@ model Request {
   @@index([trainerId])
   @@index([institutionId])
   @@index([status])
+  @@index([status, createdAt])
+  @@index([trainerId, status])
+  @@index([institutionId, status])
 }
 
 model Review {
@@ -335,6 +338,8 @@ model Post {
   @@index([createdAt])
   @@index([type])
   @@index([averageRating])
+  @@index([isActive, createdAt])
+  @@index([authorId, isActive])
 }
 
 model PostReview {
@@ -399,6 +404,7 @@ model Message {
   @@index([createdAt])
   @@index([conversationId, createdAt])
   @@index([conversationId, isRead])
+  @@index([senderId, isRead])
 }
 
 model Notification {
@@ -414,6 +420,8 @@ model Notification {
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }
 
 model VerificationRequest {

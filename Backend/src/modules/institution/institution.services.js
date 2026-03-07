@@ -77,29 +77,36 @@ export const searchInstitutionsService = async (filters = {}) => {
     ...(location && { location: { contains: location, mode: "insensitive" } }),
   };
 
-  const institutions = await client.institutionProfile.findMany({
-    where,
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          profilePicture: true,
-          isVerified: true,
+  // Optimized: Parallel queries with minimal data selection
+  const [institutions, total] = await Promise.all([
+    client.institutionProfile.findMany({
+      where,
+      select: {
+        id: true,
+        uniqueId: true,
+        name: true,
+        location: true,
+        rating: true,
+        createdAt: true,
+        user: {
+          select: {
+            id: true,
+            profilePicture: true,
+            isVerified: true,
+          },
+        },
+        _count: {
+          select: {
+            requests: true,
+          },
         },
       },
-      _count: {
-        select: {
-          requests: true,
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-    skip,
-    take: limitNum,
-  });
-
-  const total = await client.institutionProfile.count({ where });
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limitNum,
+    }),
+    client.institutionProfile.count({ where }),
+  ]);
 
   return {
     institutions,

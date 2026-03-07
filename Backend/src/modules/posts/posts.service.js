@@ -25,6 +25,17 @@ export const createPostService = async (postData) => {
       shares: 0,
       isActive: true,
     },
+    // Return minimal data for faster response
+    select: {
+      id: true,
+      content: true,
+      type: true,
+      imageUrl: true,
+      videoUrl: true,
+      tags: true,
+      createdAt: true,
+      authorId: true,
+    },
   });
 
   return post;
@@ -44,44 +55,52 @@ export const getPostsService = async (filters = {}) => {
     ...(type && { type }),
   };
 
-  const posts = await client.post.findMany({
-    where,
-    include: {
-      author: {
-        select: {
-          id: true,
-          email: true,
-          username: true,
-          firstName: true,
-          lastName: true,
-          role: true,
-          profilePicture: true,
-          trainerProfile: {
-            select: {
-              bio: true,
+  // Use parallel queries for better performance
+  const [posts, total] = await Promise.all([
+    client.post.findMany({
+      where,
+      select: {
+        id: true,
+        content: true,
+        type: true,
+        imageUrl: true,
+        videoUrl: true,
+        tags: true,
+        averageRating: true,
+        totalReviews: true,
+        shares: true,
+        createdAt: true,
+        updatedAt: true,
+        author: {
+          select: {
+            id: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            profilePicture: true,
+            // Only include profile name/bio, not full nested objects
+            trainerProfile: {
+              select: {
+                bio: true,
+              },
             },
-          },
-          institutionProfile: {
-            select: {
-              name: true,
+            institutionProfile: {
+              select: {
+                name: true,
+              },
             },
           },
         },
       },
-      _count: {
-        select: {
-          postReviews: true,
-        },
+      orderBy: {
+        [sortBy]: sortOrder,
       },
-    },
-    orderBy: {
-      [sortBy]: sortOrder,
-    },
-    skip,
-    take: limit,
-  });
-
-  const total = await client.post.count({ where });
+      skip,
+      take: limit,
+    }),
+    client.post.count({ where }),
+  ]);
 
   return {
     posts,
@@ -259,20 +278,23 @@ export const deletePostService = async (postId, userId) => {
 /* ================= REVIEW POST ================= */
 
 export const reviewPostService = async (postId, userId, rating, review) => {
-  const post = await client.post.findFirst({
-    where: { id: postId, isActive: true },
-  });
+  // Check post existence and create/update review in parallel
+  const [post, existingReview] = await Promise.all([
+    client.post.findFirst({
+      where: { id: postId, isActive: true },
+      select: { id: true },
+    }),
+    client.postReview.findUnique({
+      where: {
+        postId_userId: { postId, userId },
+      },
+      select: { id: true },
+    }),
+  ]);
 
   if (!post) {
     throw new Error("Post not found");
   }
-
-  // Check if user already reviewed
-  const existingReview = await client.postReview.findUnique({
-    where: {
-      postId_userId: { postId, userId },
-    },
-  });
 
   let postReview;
   if (existingReview) {
@@ -288,25 +310,36 @@ export const reviewPostService = async (postId, userId, rating, review) => {
     });
   }
 
-  // Recalculate average rating
-  const reviews = await client.postReview.findMany({
-    where: { postId },
-    select: { rating: true },
+  // Update post stats asynchronously (non-blocking)
+  setImmediate(async () => {
+    try {
+      const aggregation = await client.postReview.aggregate({
+        where: { postId },
+        _avg: { rating: true },
+        _count: { rating: true },
+      });
+
+      const averageRating = aggregation._avg.rating || 0;
+      const totalReviews = aggregation._count.rating;
+
+      await client.post.update({
+        where: { id: postId },
+        data: {
+          averageRating: parseFloat(averageRating.toFixed(2)),
+          totalReviews,
+        },
+      });
+    } catch (error) {
+      console.error('Background rating update error:', error);
+    }
   });
 
-  const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
-  const totalReviews = reviews.length;
-
-  // Update post with new average
-  await client.post.update({
-    where: { id: postId },
-    data: {
-      averageRating: parseFloat(averageRating.toFixed(2)),
-      totalReviews,
-    },
-  });
-
-  return { postReview, averageRating, totalReviews };
+  // Return immediately without waiting for aggregation
+  return { 
+    postReview, 
+    averageRating: rating, // Optimistic value
+    totalReviews: existingReview ? undefined : 1 
+  };
 };
 
 /* ================= UPDATE REVIEW ================= */
@@ -333,13 +366,13 @@ export const updateReviewService = async (reviewId, userId, rating, review) => {
     },
   });
 
-  // Recalculate average rating
-  const reviews = await client.postReview.findMany({
+  // Use database aggregation instead of fetching all reviews
+  const aggregation = await client.postReview.aggregate({
     where: { postId: existingReview.postId },
-    select: { rating: true },
+    _avg: { rating: true },
   });
 
-  const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+  const averageRating = aggregation._avg.rating || 0;
 
   await client.post.update({
     where: { id: existingReview.postId },
@@ -370,16 +403,15 @@ export const deleteReviewService = async (reviewId, userId) => {
     where: { id: reviewId },
   });
 
-  // Recalculate average rating
-  const reviews = await client.postReview.findMany({
+  // Use database aggregation instead of fetching all reviews
+  const aggregation = await client.postReview.aggregate({
     where: { postId: existingReview.postId },
-    select: { rating: true },
+    _avg: { rating: true },
+    _count: { rating: true },
   });
 
-  const averageRating = reviews.length > 0 
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
-    : 0;
-  const totalReviews = reviews.length;
+  const averageRating = aggregation._avg.rating || 0;
+  const totalReviews = aggregation._count.rating;
 
   await client.post.update({
     where: { id: existingReview.postId },

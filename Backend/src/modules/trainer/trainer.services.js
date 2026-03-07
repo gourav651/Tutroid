@@ -118,19 +118,17 @@ export const updateUserProfileService = async (userId, data) => {
     if (data.location !== undefined) updateData.location = data.location;
     if (data.bio !== undefined) updateData.bio = data.bio;
     
+    // Return minimal data for faster response
     const user = await client.user.update({
       where: { id: userId },
       data: updateData,
       select: {
         id: true,
-        email: true,
         firstName: true,
         lastName: true,
         profilePicture: true,
         coverImage: true,
         headline: true,
-        location: true,
-        bio: true,
         role: true,
       },
     });
@@ -147,28 +145,20 @@ export const updateUserProfileService = async (userId, data) => {
 
 /* ================= GET TRAINER REVIEWS ================= */
 export const getTrainerReviewsService = async (userId) => {
-  // Get all posts by this trainer
-  const posts = await client.post.findMany({
+  // Optimized single query with joins instead of N+1
+  const reviews = await client.postReview.findMany({
     where: {
-      authorId: userId,
-      isActive: true,
+      post: {
+        authorId: userId,
+        isActive: true,
+      },
     },
     select: {
       id: true,
-      content: true,
-      imageUrl: true,
+      rating: true,
+      review: true,
       createdAt: true,
-    },
-  });
-
-  const postIds = posts.map(p => p.id);
-
-  // Get all reviews for these posts
-  const reviews = await client.postReview.findMany({
-    where: {
-      postId: { in: postIds },
-    },
-    include: {
+      updatedAt: true,
       user: {
         select: {
           id: true,
@@ -184,6 +174,7 @@ export const getTrainerReviewsService = async (userId) => {
           id: true,
           content: true,
           imageUrl: true,
+          createdAt: true,
         },
       },
     },
@@ -192,13 +183,13 @@ export const getTrainerReviewsService = async (userId) => {
     },
   });
 
-  // Calculate average rating
+  // Calculate average rating from the results
   const totalRating = reviews.reduce((sum, r) => sum + r.rating, 0);
   const averageRating = reviews.length > 0 ? totalRating / reviews.length : 0;
 
   return {
     reviews,
-    averageRating,
+    averageRating: parseFloat(averageRating.toFixed(2)),
     totalReviews: reviews.length,
   };
 };

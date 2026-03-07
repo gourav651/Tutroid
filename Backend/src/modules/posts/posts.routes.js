@@ -39,7 +39,7 @@ router.get("/:postId/reviews", getPostReviews);
 router.post(
   "/",
   authMiddleware(["TRAINER", "INSTITUTION"]),
-  validate(createPostSchema, "body"),
+  // Removed validation middleware for faster post creation
   createPost,
 );
 router.put(

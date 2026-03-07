@@ -36,22 +36,30 @@ export const searchTrainersService = async (filters = {}) => {
     rating: { rating: "desc" },
   };
 
+  // Optimized: Parallel queries with minimal data selection
   const [trainers, total] = await Promise.all([
     client.trainerProfile.findMany({
       where,
       orderBy: orderByMap[sort] || { createdAt: "desc" },
       skip: (pageNum - 1) * limitNum,
       take: limitNum,
-      include: {
+      select: {
+        id: true,
+        uniqueId: true,
+        bio: true,
+        location: true,
+        experience: true,
+        skills: true,
+        rating: true,
+        verified: true,
+        completedRequests: true,
         user: {
           select: {
             id: true,
-            email: true,
             username: true,
             firstName: true,
             lastName: true,
             profilePicture: true,
-            role: true,
             isVerified: true,
           },
         },

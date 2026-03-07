@@ -6,6 +6,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
+import compression from "compression";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -34,20 +35,36 @@ import verificationRoutes from "./modules/verification/verification.routes.js";
 import { errorHandler } from "./middleware/error.middleware.js";
 import { auditMiddleware } from "./middleware/audit.middleware.js";
 import { requestTimeout } from "./middleware/timeout.middleware.js";
+import { cacheMiddleware } from "./middleware/cache.middleware.js";
 
 const app = express();
 
-console.log("APP FILE LOADED - CORS FIXED");
+console.log("APP FILE LOADED - OPTIMIZED VERSION");
 
 // Trust proxy for Render deployment
-app.set('trust proxy', true);
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1); // Trust first proxy
+} else {
+  app.set('trust proxy', false); // Disable in development
+}
 
-/* ================= SECURITY ================= */
+/* ================= PERFORMANCE & SECURITY ================= */
 
-// Request timeout middleware (must be early in the chain)
-app.use(requestTimeout(15000)); // 15 second timeout (reduced from 30)
+// Compression middleware (should be early)
+app.use(compression({
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  },
+  level: 6, // Good balance between compression and CPU usage
+}));
 
-// CORS must be before helmet
+// Request timeout middleware (reduced timeout)
+app.use(requestTimeout(30000)); // 30 second timeout for file uploads
+
+// CORS configuration
 app.use(
   cors({
     origin: [
@@ -63,41 +80,44 @@ app.use(
   }),
 );
 
-// Basic security headers (configured to work with CORS)
+// Security headers
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
   }),
 );
 
-// Global API rate limiter (generous for development)
+// Stricter rate limiting for production
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 mins
-  max: 500, // 500 requests per 15 minutes (increased from 100)
+  max: process.env.NODE_ENV === 'production' ? 200 : 500, // Stricter in production
   message: {
     success: false,
     message: "Too many requests from this IP. Please try again later.",
   },
-  standardHeaders: true, // Return rate limit info in headers
+  standardHeaders: true,
   legacyHeaders: false,
+  // Skip rate limiting for health checks
+  skip: (req) => req.path === '/health',
+  // Fix trust proxy warning
+  validate: { trustProxy: false },
 });
 app.use(limiter);
 
 // JSON body limit protection
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({ limit: "50kb" })); // Reduced from 100kb
 
-// Logging
-app.use(morgan("dev"));
+// Conditional logging (only in development)
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan("dev"));
+}
 
-// Audit logging (after authentication)
+// Audit logging (optimized to be non-blocking)
 app.use(auditMiddleware);
-
-// Note: Static file serving for /materials removed - now using Cloudinary CDN
-
-app.use("/api/posts", postRoutes); // legacy support
 
 /* ================= HEALTH CHECK ================= */
 app.get("/health", (req, res) => {
+  res.set('Cache-Control', 'no-cache');
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
@@ -108,6 +128,7 @@ app.get("/health", (req, res) => {
 
 // Quick signup health check
 app.get("/api/v1/auth/health", (req, res) => {
+  res.set('Cache-Control', 'no-cache');
   res.json({
     status: "healthy",
     service: "auth",
@@ -117,11 +138,11 @@ app.get("/api/v1/auth/health", (req, res) => {
 
 /* ================= ROUTES ================= */
 
-// API v1 routes
+// API v1 routes (primary) with caching for read-heavy endpoints
 app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/posts", postRoutes);
-app.use("/api/v1/trainer", trainerRoutes);
-app.use("/api/v1/institution", institutionRouter);
+app.use("/api/v1/posts", cacheMiddleware(60), postRoutes); // Cache posts for 1 minute
+app.use("/api/v1/trainer", cacheMiddleware(120), trainerRoutes); // Cache trainer profiles for 2 minutes
+app.use("/api/v1/institution", cacheMiddleware(120), institutionRouter);
 app.use("/api/v1/reviews", reviewRoutes);
 app.use("/api/v1/requests", requestRoutes);
 app.use("/api/v1/material", materialRoutes);
@@ -130,23 +151,26 @@ app.use("/api/v1/reports", reportRoutes);
 app.use("/api/v1/upload", simpleUploadRoutes);
 app.use("/api/v1/networking", networkingRoutes);
 app.use("/api/v1/messaging", messagingRoutes);
-app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/users", cacheMiddleware(180), userRoutes); // Cache user profiles for 3 minutes
 app.use("/api/v1/notifications", notificationRoutes);
-app.use("/api/v1/discovery", discoveryRoutes);
+app.use("/api/v1/discovery", cacheMiddleware(300), discoveryRoutes); // Cache discovery for 5 minutes
 app.use("/api/v1/admin", adminRoutes);
-app.use("/api/v1/analytics", analyticsRoutes);
+app.use("/api/v1/analytics", cacheMiddleware(120), analyticsRoutes); // Cache analytics for 2 minutes
 app.use("/api/v1/debug", debugRoutes);
 app.use("/api/v1/verification", verificationRoutes);
 
-// Legacy routes (backward compatibility)
-app.use("/api/auth", authRoutes);
-app.use("/api/trainer", trainerRoutes);
-app.use("/api/institution", institutionRouter);
-app.use("/api/reviews", reviewRoutes);
-app.use("/api/requests", requestRoutes);
-app.use("/api/material", materialRoutes);
-app.use("/api/material-rating", materialRatingRoutes);
-app.use("/api/reports", reportRoutes);
+// Legacy routes (backward compatibility) - only in development
+if (process.env.NODE_ENV !== 'production') {
+  app.use("/api/posts", postRoutes); // legacy support
+  app.use("/api/auth", authRoutes);
+  app.use("/api/trainer", trainerRoutes);
+  app.use("/api/institution", institutionRouter);
+  app.use("/api/reviews", reviewRoutes);
+  app.use("/api/requests", requestRoutes);
+  app.use("/api/material", materialRoutes);
+  app.use("/api/material-rating", materialRatingRoutes);
+  app.use("/api/reports", reportRoutes);
+}
 
 /* ================= ERROR HANDLER ================= */
 

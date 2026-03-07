@@ -14,6 +14,14 @@ import {
 // Create Post
 export const createPost = async (req, res) => {
   try {
+    // Basic validation
+    if (!req.body.content || req.body.content.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Content is required",
+      });
+    }
+
     const postData = {
       content: req.body.content,
       type: req.body.type || "text",
@@ -25,7 +33,8 @@ export const createPost = async (req, res) => {
 
     const post = await createPostService(postData);
 
-    res.status(201).json({
+    // Return immediately
+    return res.status(201).json({
       success: true,
       message: "Post created successfully",
       data: post,
@@ -33,18 +42,12 @@ export const createPost = async (req, res) => {
   } catch (error) {
     console.error("Create post error:", error);
 
-    if (error.name === "ZodError") {
-      return res.status(400).json({
+    if (!res.headersSent) {
+      return res.status(500).json({
         success: false,
-        message: "Validation error",
-        errors: error.errors,
+        message: error.message || "Failed to create post",
       });
     }
-
-    res.status(500).json({
-      success: false,
-      message: error.message || "Failed to create post",
-    });
   }
 };
 

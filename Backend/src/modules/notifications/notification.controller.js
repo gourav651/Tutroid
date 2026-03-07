@@ -5,16 +5,27 @@ export const getNotifications = async (req, res, next) => {
         const userId = req.user.id;
         const { limit = 20, page = 1 } = req.query;
 
-        const notifications = await prisma.notification.findMany({
-            where: { userId },
-            orderBy: { createdAt: "desc" },
-            take: parseInt(limit),
-            skip: (parseInt(page) - 1) * parseInt(limit)
-        });
-
-        const unreadCount = await prisma.notification.count({
-            where: { userId, isRead: false }
-        });
+        // Parallel queries for better performance
+        const [notifications, unreadCount] = await Promise.all([
+            prisma.notification.findMany({
+                where: { userId },
+                select: {
+                    id: true,
+                    type: true,
+                    title: true,
+                    message: true,
+                    link: true,
+                    isRead: true,
+                    createdAt: true,
+                },
+                orderBy: { createdAt: "desc" },
+                take: parseInt(limit),
+                skip: (parseInt(page) - 1) * parseInt(limit)
+            }),
+            prisma.notification.count({
+                where: { userId, isRead: false }
+            })
+        ]);
 
         res.json({ 
             success: true, 

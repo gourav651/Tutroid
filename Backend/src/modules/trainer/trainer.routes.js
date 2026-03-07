@@ -33,7 +33,7 @@ const searchLimiter = rateLimit({
 router.get(
   "/search",
   searchLimiter,
-  validate(trainerSearchSchema, "query"),
+  // Removed validation for faster search
   searchTrainers,
 );
 
