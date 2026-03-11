@@ -22,6 +22,8 @@ import materialRoutes from "./modules/materials/material.routes.js";
 import materialRatingRoutes from "./modules/materialRating/materialRating.routes.js";
 import reportRoutes from "./modules/report/report.routes.js";
 import simpleUploadRoutes from "./modules/uploads/simple-upload.routes.js";
+import serveFileRoutes from "./modules/uploads/serve-file.routes.js";
+import downloadProxyRoutes from "./modules/uploads/download-proxy.routes.js";
 import networkingRoutes from "./modules/networking/networking.routes.js";
 import messagingRoutes from "./modules/messaging/messaging.routes.js";
 import userRoutes from "./modules/auth/user.routes.js";
@@ -137,6 +139,12 @@ app.get("/api/v1/auth/health", (req, res) => {
 });
 
 /* ================= ROUTES ================= */
+
+// Serve uploaded files (must be before other routes to avoid conflicts)
+app.use("/uploads", serveFileRoutes);
+
+// Download proxy for Cloudinary files
+app.use("/api/v1/proxy", downloadProxyRoutes);
 
 // API v1 routes (primary) with caching for read-heavy endpoints
 app.use("/api/v1/auth", authRoutes);

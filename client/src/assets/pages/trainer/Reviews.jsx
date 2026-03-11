@@ -6,6 +6,7 @@ import { useTheme } from "../../../context/ThemeContext";
 import ApiService from "../../../services/api";
 import LoadingScreen from "../../../components/LoadingScreen";
 import ReviewsListModal from "../../../components/ReviewsListModal";
+import { DEFAULT_PROFILE_IMAGE } from "../../../utils/constants";
 
 const Reviews = () => {
   const { user } = useAuth();
@@ -44,7 +45,7 @@ const Reviews = () => {
           reviewer: {
             firstName: review.user?.firstName || "Anonymous",
             lastName: review.user?.lastName || "",
-            avatar: review.user?.profilePicture || review.user?.avatar || `https://ui-avatars.com/api/?name=${review.user?.firstName}+${review.user?.lastName}&background=random`,
+            avatar: review.user?.profilePicture || review.user?.avatar || DEFAULT_PROFILE_IMAGE,
           },
           rating: review.rating,
           comment: review.review || "",

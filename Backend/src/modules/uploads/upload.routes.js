@@ -12,10 +12,11 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(
-      null,
-      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname),
-    );
+    const ext = path.extname(file.originalname);
+    // Ensure extension is always included
+    const filename = file.fieldname + "-" + uniqueSuffix + ext;
+    console.log("Saving file as:", filename, "Original:", file.originalname, "Extension:", ext);
+    cb(null, filename);
   },
 });
 
@@ -37,10 +38,10 @@ const upload = multer({
   },
 });
 
-// Upload endpoint - trainers and institutions only
+// Upload endpoint - all authenticated users can upload profile images
 router.post(
   "/upload",
-  authMiddleware(["TRAINER", "INSTITUTION"]),
+  authMiddleware(["TRAINER", "INSTITUTION", "STUDENT"]),
   upload.single("file"),
   (req, res) => {
     try {
@@ -51,7 +52,21 @@ router.post(
         });
       }
 
+      console.log("File uploaded:", {
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      });
+
       const fileUrl = `/uploads/${req.file.filename}`;
+      
+      // Determine if it's a PDF
+      const isPDF = req.file.mimetype === "application/pdf" || 
+                    req.file.originalname.toLowerCase().endsWith('.pdf') ||
+                    req.file.filename.toLowerCase().endsWith('.pdf');
+
+      console.log("File type detection:", { isPDF, mimetype: req.file.mimetype, filename: req.file.filename });
 
       res.status(200).json({
         success: true,
@@ -62,9 +77,12 @@ router.post(
           size: req.file.size,
           mimetype: req.file.mimetype,
           url: fileUrl,
+          isPDF: isPDF,
+          fileType: isPDF ? 'pdf' : (req.file.mimetype.startsWith('image/') ? 'image' : 'file')
         },
       });
     } catch (error) {
+      console.error("Upload error:", error);
       res.status(500).json({
         success: false,
         message: error.message || "Failed to upload file",

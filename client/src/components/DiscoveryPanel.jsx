@@ -167,16 +167,6 @@ const DiscoveryPanel = ({ isOpen, onClose }) => {
             >
               {user?.role === "TRAINER" ? "Trainers" : "Institutions"}
             </button>
-            <button
-              onClick={() => setSearchRole("ALL")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                searchRole === "ALL"
-                  ? `bg-blue-500 text-white shadow-md`
-                  : `${theme.hoverBg} ${theme.textSecondary}`
-              }`}
-            >
-              All
-            </button>
           </div>
         )}
 

@@ -3,6 +3,7 @@ import { DASHBOARD_CONFIG, USER_TYPES } from "../../config/dashboardConfig";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import ApiService from "../../services/api";
+import { DEFAULT_PROFILE_IMAGE } from "../../utils/constants";
 import {
   Heart,
   MessageCircle,
@@ -22,6 +23,7 @@ import {
   Search,
 } from "lucide-react";
 import PostCard from "./PostCard";
+import PostDetailModal from "../../components/PostDetailModal";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const POSTS_PER_PAGE = 5;
@@ -50,6 +52,10 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
   const [savedPosts, setSavedPosts] = useState(new Set());
   const [commentInputs, setCommentInputs] = useState({});
   const [showComments, setShowComments] = useState({});
+  
+  // Post detail modal state
+  const [isPostDetailModalOpen, setIsPostDetailModalOpen] = useState(false);
+  const [selectedPost, setSelectedPost] = useState(null);
 
   /* ================= LOAD POSTS ================= */
 
@@ -124,9 +130,9 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
             author: post.author ? {
               ...post.author,
               // Use profilePicture, or fall back to avatar field if it exists
-              profilePicture: normalizeImageUrl(post.author.profilePicture || post.author.avatar),
+              profilePicture: normalizeImageUrl(post.author.profilePicture || post.author.avatar) || DEFAULT_PROFILE_IMAGE,
               // Also set avatar for backward compatibility
-              avatar: post.author.profilePicture || post.author.avatar || null,
+              avatar: post.author.profilePicture || post.author.avatar || DEFAULT_PROFILE_IMAGE,
             } : null,
           };
         });
@@ -292,11 +298,19 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
 
         // Use the Cloudinary URL directly from response
         imageUrl = uploadResponse.data.url;
+        
+        // Use the fileType from backend response if available
+        const uploadedFileType = uploadResponse.data.fileType || uploadResponse.data.isPDF ? 'pdf' : null;
+        
+        // Store for later use
+        if (uploadedFileType) {
+          selectedImage._uploadedType = uploadedFileType;
+        }
       }
 
       /* ========= POST DATA ========= */
 
-      const isPdf = selectedImage?.type === "application/pdf";
+      const isPdf = selectedImage?._uploadedType === 'pdf' || selectedImage?.type === "application/pdf";
 
       const cleanedContent = postText.trim();
 
@@ -638,6 +652,10 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
                 }))
               }
               onReviewUpdate={handleReviewUpdate}
+              onPostClick={(post) => {
+                setSelectedPost(post);
+                setIsPostDetailModalOpen(true);
+              }}
             />
           ))}
 
@@ -794,6 +812,24 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
           </div>
         </div>
       )}
+
+      {/* Post Detail Modal */}
+      <PostDetailModal
+        isOpen={isPostDetailModalOpen}
+        onClose={() => {
+          setIsPostDetailModalOpen(false);
+          setSelectedPost(null);
+        }}
+        post={selectedPost}
+        user={user}
+        isSaved={savedPosts.has(selectedPost?.id)}
+        onSave={() => handleSave(selectedPost?.id)}
+        onShare={() => handleShare(selectedPost?.id)}
+        onDelete={() => {}}
+        onEdit={() => {}}
+        isOwnProfile={false}
+        onReviewUpdate={handleReviewUpdate}
+      />
     </div>
   );
 }

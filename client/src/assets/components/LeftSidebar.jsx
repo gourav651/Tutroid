@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { CheckCircle2 } from "lucide-react";
 import ApiService from "../../services/api";
+import { DEFAULT_PROFILE_IMAGE } from "../../utils/constants";
 
 export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
   const config = DASHBOARD_CONFIG[userType];
@@ -38,7 +39,7 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
               user.firstName && user.lastName
                 ? `${user.firstName} ${user.lastName}`
                 : user.firstName || user.email?.split("@")[0] || prev.name,
-            avatar: user.profilePicture || prev.avatar,
+            avatar: user.profilePicture || DEFAULT_PROFILE_IMAGE,
             headline: user.headline || prev.headline,
             location:
               user.location ||
@@ -85,7 +86,7 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
       setCurrentProfile((prev) => ({
         ...prev,
         name: authUser.name || authUser.firstName || prev.name,
-        avatar: authUser.avatar || authUser.profilePicture || prev.avatar,
+        avatar: authUser.avatar || authUser.profilePicture || DEFAULT_PROFILE_IMAGE,
       }));
     }
   }, [authUser]);

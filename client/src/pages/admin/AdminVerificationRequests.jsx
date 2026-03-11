@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import ApiService from "../../services/api";
+import { DEFAULT_PROFILE_IMAGE } from "../../utils/constants";
 import {
   CheckCircle2,
   XCircle,
@@ -219,9 +220,7 @@ const AdminVerificationRequests = () => {
                     <img
                       src={
                         request.user.profilePicture ||
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                          `${request.user.firstName} ${request.user.lastName}`
-                        )}&background=random`
+                        DEFAULT_PROFILE_IMAGE
                       }
                       alt={`${request.user.firstName} ${request.user.lastName}`}
                       className="w-16 h-16 rounded-full object-cover"
@@ -356,9 +355,7 @@ const AdminVerificationRequests = () => {
                 <img
                   src={
                     selectedRequest.user.profilePicture ||
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                      `${selectedRequest.user.firstName} ${selectedRequest.user.lastName}`
-                    )}&background=random`
+                    DEFAULT_PROFILE_IMAGE
                   }
                   alt={`${selectedRequest.user.firstName} ${selectedRequest.user.lastName}`}
                   className="w-20 h-20 rounded-full object-cover"

@@ -84,6 +84,9 @@ export const signupService = async ({ email, password, role, phone, organization
   // Generate unique username (simplified)
   const username = await generateUsername(normalizedEmail, null, null);
 
+  // Default profile picture for new users
+  const defaultProfilePicture = "/images/default-profile.svg";
+
   // Create user with timeout and simplified profile creation
   const createdUser = await Promise.race([
     withRetry(async () => {
@@ -93,6 +96,7 @@ export const signupService = async ({ email, password, role, phone, organization
           username,
           password: hashedPassword,
           role,
+          profilePicture: defaultProfilePicture,
           headline: role === "TRAINER" ? (organization || "Expert Trainer") : 
                    (role === "INSTITUTION" ? (organization || "Educational Institution") : "Student"),
 

@@ -14,11 +14,13 @@ import {
   Trash2,
   Globe,
   Star,
+  X,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import ReviewModal from "../../components/ReviewModal";
 import ReviewsListModal from "../../components/ReviewsListModal";
 import ApiService from "../../services/api";
+import { DEFAULT_PROFILE_IMAGE } from "../../utils/constants";
 
 export default function PostCard({
   post,
@@ -37,6 +39,7 @@ export default function PostCard({
   onEdit,
   isOwnProfile = false,
   onReviewUpdate,
+  onPostClick,
 }) {
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -49,6 +52,7 @@ export default function PostCard({
   const [loadingReviews, setLoadingReviews] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   const handleReviewSubmit = async (rating, review) => {
     try {
@@ -179,19 +183,33 @@ export default function PostCard({
 
   const authorName = getAuthorName();
   const authorInitial = authorName.charAt(0).toUpperCase();
-  const authorAvatar = post.author?.profilePicture || post.author?.avatar;
+  const authorAvatar = post.author?.profilePicture || post.author?.avatar || DEFAULT_PROFILE_IMAGE;
   const [imageError, setImageError] = useState(false);
 
-  // Check if post is a PDF - check type first, then URL patterns
-  const isPDF = post.type === "article" || 
-                post.type === "pdf" || 
-                post.imageUrl?.toLowerCase().includes(".pdf") ||
+  // Check if post is a PDF - check mimetype and URL patterns
+  const isPDF = post.mimetype === "application/pdf" ||
+                post.fileType === "pdf" ||
+                post.imageUrl?.toLowerCase().endsWith(".pdf") ||
+                post.imageUrl?.toLowerCase().includes(".pdf?") ||
+                post.imageUrl?.toLowerCase().includes(".pdf#") ||
                 post.imageUrl?.toLowerCase().includes("/raw/upload/") || // Cloudinary raw PDFs
-                post.imageUrl?.toLowerCase().match(/\.(pdf)(\?|$|#)/);
-
+                post.imageUrl?.toLowerCase().match(/\.(pdf)(\?|$|#|\/)/i);
   return (
     <>
-      <div className={`${theme.cardBg} rounded-xl shadow-sm border ${theme.cardBorder} overflow-hidden hover:shadow-md transition-all duration-200 relative`}>
+      <div 
+        className={`${theme.cardBg} rounded-xl shadow-sm border ${theme.cardBorder} overflow-hidden hover:shadow-md transition-all duration-200 relative ${onPostClick ? 'cursor-pointer' : ''}`}
+        onClick={(e) => {
+          // Only trigger if clicking on the card itself, not on buttons or interactive elements
+          if (
+            onPostClick &&
+            !e.target.closest('button') &&
+            !e.target.closest('a') &&
+            !e.target.closest('input')
+          ) {
+            onPostClick(post);
+          }
+        }}
+      >
         {/* Rating Badge - Top Right */}
         {(post.averageRating > 0 || post.totalReviews > 0) && (
           <div className="absolute top-2 sm:top-4 right-2 sm:right-4 z-10">
@@ -326,9 +344,18 @@ export default function PostCard({
         <div className="px-3 sm:px-4 pb-2 sm:pb-3">
           {isPDF ? (
             <a
-              href={post.imageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Use backend proxy to download the file
+                const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+                const downloadUrl = `${BACKEND_URL}/api/v1/proxy/download?url=${encodeURIComponent(post.imageUrl)}`;
+                
+                // Open in new window to trigger download
+                window.open(downloadUrl, '_blank');
+              }}
               className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 ${theme.hoverBg} rounded-xl border ${theme.cardBorder} transition-colors group`}
             >
               <div className="w-8 sm:w-10 h-8 sm:h-10 bg-red-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -336,19 +363,65 @@ export default function PostCard({
               </div>
               <div className="min-w-0">
                 <p className={`font-medium text-xs sm:text-sm ${theme.textPrimary}`}>PDF Document</p>
-                <p className={`text-[10px] sm:text-xs ${theme.accentColor} group-hover:underline`}>Click to open</p>
+                <p className={`text-[10px] sm:text-xs ${theme.accentColor} group-hover:underline`}>Click to download</p>
               </div>
             </a>
           ) : (
             <img
               src={post.imageUrl}
               alt="Post content"
-              className="w-full rounded-xl object-cover max-h-96"
+              className="w-full rounded-xl object-cover max-h-96 cursor-pointer hover:opacity-95 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowImageModal(true);
+              }}
               onError={(e) => {
                 e.currentTarget.style.display = "none";
               }}
             />
           )}
+        </div>
+      )}
+
+      {/* Image Modal - Larger View */}
+      {showImageModal && !isPDF && post.imageUrl && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ 
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)'
+          }}
+          onClick={() => setShowImageModal(false)}
+        >
+          {/* Modal Container */}
+          <div 
+            className="relative bg-gray-900 rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '65vw',
+              height: '70vh',
+              maxWidth: '1100px',
+              maxHeight: '800px',
+              minWidth: '500px',
+              minHeight: '400px'
+            }}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="absolute top-3 right-3 p-2 rounded-full bg-white hover:bg-gray-100 shadow-xl text-gray-700 hover:text-gray-900 transition-all duration-200 z-20"
+            >
+              <X size={24} />
+            </button>
+
+            {/* Image */}
+            <img
+              src={post.imageUrl}
+              alt="Post content"
+              className="w-full h-full object-contain rounded-xl p-4"
+            />
+          </div>
         </div>
       )}
 

@@ -13,18 +13,34 @@ const storage = new CloudinaryStorage({
 
     const isPDF = file.mimetype === "application/pdf";
     
-    return {
-      folder: "uploads",
-      allowed_formats: ["jpg", "jpeg", "png", "pdf", "webp"],
-      resource_type: isPDF ? "raw" : "image", // Explicitly set to 'image' for images
-
-      transformation: isPDF ? [] : [
-        { quality: "auto:good", fetch_format: "auto" },
-        { width: 1200, crop: "limit" },
-      ],
-      // Don't set public_id, let Cloudinary generate it
-      timeout: 60000, // 60 second timeout for Cloudinary
-    };
+    // For PDFs, we need to include the extension in the public_id
+    // Generate a unique filename
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(2, 15);
+    
+    if (isPDF) {
+      // For PDFs, use format parameter to ensure .pdf extension
+      return {
+        folder: "uploads",
+        resource_type: "raw",
+        public_id: `${timestamp}-${randomString}`,
+        format: "pdf", // This ensures the file is saved with .pdf extension
+        access_mode: "public", // Make sure the file is publicly accessible
+        timeout: 60000,
+      };
+    } else {
+      // For images, use standard image upload
+      return {
+        folder: "uploads",
+        allowed_formats: ["jpg", "jpeg", "png", "webp"],
+        resource_type: "image",
+        transformation: [
+          { quality: "auto:good", fetch_format: "auto" },
+          { width: 1200, crop: "limit" },
+        ],
+        timeout: 60000,
+      };
+    }
   },
 });
 
@@ -49,10 +65,10 @@ const upload = multer({
   },
 });
 
-// Simple upload endpoint - trainers and institutions only
+// Simple upload endpoint - all authenticated users can upload
 router.post(
   "/upload",
-  authMiddleware(["TRAINER", "INSTITUTION"]),
+  authMiddleware(["TRAINER", "INSTITUTION", "STUDENT"]),
   (req, res, next) => {
     upload.single("file")(req, res, (err) => {
       if (err) {
@@ -82,8 +98,25 @@ router.post(
         });
       }
 
-      // Always use Cloudinary secure HTTPS URL
-      const fileUrl = req.file.path;
+      // Determine file type
+      const isPDF = req.file.mimetype === "application/pdf";
+      
+      let fileUrl;
+      
+      if (isPDF) {
+        // For PDFs, use the direct path from Cloudinary
+        // Cloudinary automatically handles raw files
+        fileUrl = req.file.path;
+        
+        console.log("PDF upload:", {
+          publicId: req.file.filename,
+          path: req.file.path,
+          mimetype: req.file.mimetype
+        });
+      } else {
+        // For images, use the path directly
+        fileUrl = req.file.path;
+      }
 
       // Verify it's a valid Cloudinary URL
       if (!fileUrl || !fileUrl.startsWith('https://res.cloudinary.com/')) {
@@ -93,14 +126,24 @@ router.post(
           message: "Failed to get valid Cloudinary URL",
         });
       }
+      
+      console.log("Cloudinary upload successful:", {
+        filename: req.file.filename,
+        mimetype: req.file.mimetype,
+        finalUrl: fileUrl,
+        isPDF: isPDF
+      });
 
-      // Return minimal response for faster processing
+      // Return response with file type information
       return res.status(200).json({
         success: true,
         message: "File uploaded successfully",
         data: {
           url: fileUrl,
           publicId: req.file.filename,
+          mimetype: req.file.mimetype,
+          isPDF: isPDF,
+          fileType: isPDF ? 'pdf' : 'image'
         },
       });
     } catch (error) {

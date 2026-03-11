@@ -10,8 +10,12 @@ dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const storageDir = path.join(__dirname, "../storage/materials");
+const uploadsDir = path.join(__dirname, "../uploads");
+
 try {
   fs.mkdirSync(storageDir, { recursive: true });
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log("✅ Storage directories created");
 } catch (err) {
   console.warn("Could not create storage directory:", err.message);
 }

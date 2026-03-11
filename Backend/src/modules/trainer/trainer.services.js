@@ -129,6 +129,8 @@ export const updateUserProfileService = async (userId, data) => {
         profilePicture: true,
         coverImage: true,
         headline: true,
+        location: true,
+        bio: true,
         role: true,
       },
     });

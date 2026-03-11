@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import ApiService from "../services/api";
 import { formatDistanceToNow } from "../utils/dateUtils";
+import { DEFAULT_PROFILE_IMAGE } from "../utils/constants";
 
 export default function DirectMessageModal({ isOpen, onClose, recipient }) {
   const { theme } = useTheme();
@@ -136,7 +137,7 @@ export default function DirectMessageModal({ isOpen, onClose, recipient }) {
     ? `${recipient.firstName} ${recipient.lastName || ""}`.trim()
     : recipient?.institutionProfile?.name || "User";
 
-  const recipientAvatar = recipient?.profilePicture || null;
+  const recipientAvatar = recipient?.profilePicture || DEFAULT_PROFILE_IMAGE;
 
   return (
     <>

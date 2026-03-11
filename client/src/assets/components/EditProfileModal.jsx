@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { X, Camera, Upload, User, Briefcase, MapPin, GraduationCap, Building2 } from "lucide-react";
 import ApiService from "../../services/api";
+import { DEFAULT_PROFILE_IMAGE } from "../../utils/constants";
 
 export default function EditProfileModal({ isOpen, onClose, userType, profileData, onSave }) {
   const { theme } = useTheme();
@@ -21,11 +22,11 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
     about: profileData?.bio || "",
     skills: profileData?.trainerProfile?.skills || profileData?.skills || [],
     experience: profileData?.experience || [],
-    avatar: profileData?.profilePicture || profileData?.avatar || "",
+    avatar: profileData?.profilePicture || profileData?.avatar || DEFAULT_PROFILE_IMAGE,
     coverImage: profileData?.coverImage || ""
   });
   
-  const [profilePreview, setProfilePreview] = useState(profileData?.profilePicture || profileData?.avatar || null);
+  const [profilePreview, setProfilePreview] = useState(profileData?.profilePicture || profileData?.avatar || DEFAULT_PROFILE_IMAGE);
   const [coverPreview, setCoverPreview] = useState(profileData?.coverImage || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -43,10 +44,10 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
         location: profileData.location || "",
         skills: profileData.trainerProfile?.skills || profileData.skills || [],
         experience: profileData.experience || [],
-        avatar: profileData.profilePicture || profileData.avatar || "",
+        avatar: profileData.profilePicture || profileData.avatar || DEFAULT_PROFILE_IMAGE,
         coverImage: profileData.coverImage || ""
       });
-      setProfilePreview(profileData.profilePicture || profileData.avatar || null);
+      setProfilePreview(profileData.profilePicture || profileData.avatar || DEFAULT_PROFILE_IMAGE);
       setCoverPreview(profileData.coverImage || null);
     }
   }, [profileData]);
@@ -123,11 +124,22 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
   const uploadFile = async (file) => {
     if (!file) return null;
     
-    const response = await ApiService.uploadFile(file, "Profile Photo");
-    if (response.success) {
-      return response.data.url;
+    try {
+      console.log('Uploading file:', file.name, 'Size:', file.size);
+      const response = await ApiService.uploadFile(file, "Profile Photo");
+      console.log('Upload response:', response);
+      
+      if (response.success) {
+        console.log('Upload successful, URL:', response.data.url);
+        return response.data.url;
+      } else {
+        console.error('Upload failed:', response.message);
+        throw new Error(response.message || "Failed to upload file");
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
     }
-    throw new Error(response.message || "Failed to upload file");
   };
 
   const handleSave = async () => {
@@ -139,11 +151,19 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
       let profilePictureUrl = formData.avatar;
       let coverImageUrl = formData.coverImage;
 
+      console.log('Starting save - profileFile:', profileFile, 'coverFile:', coverFile);
+      console.log('Initial profilePictureUrl:', profilePictureUrl);
+      console.log('Initial coverImageUrl:', coverImageUrl);
+
       if (profileFile) {
+        console.log('Uploading profile picture...');
         profilePictureUrl = await uploadFile(profileFile);
+        console.log('Profile picture uploaded, URL:', profilePictureUrl);
       }
       if (coverFile) {
+        console.log('Uploading cover image...');
         coverImageUrl = await uploadFile(coverFile);
+        console.log('Cover image uploaded, URL:', coverImageUrl);
       }
 
       // Split name for backend
@@ -165,6 +185,7 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
         lastName,
         headline: formData.headline,
         location: formData.location,
+        bio: formData.about,
         profilePicture: profilePictureUrl,
         coverImage: coverImageUrl,
         avatar: profilePictureUrl,
@@ -191,12 +212,19 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
         // Handle the response structure from trainer endpoint
         const updatedData = response.data.user ? {
           ...response.data.user,
-          trainerProfile: response.data.profile,
+          trainerProfile: response.data.profile ? {
+            ...response.data.profile,
+            skills: formData.skills || []
+          } : undefined,
           // Include the updated fields for immediate UI update
           firstName,
           lastName,
           headline: formData.headline,
           location: formData.location,
+          bio: formData.about,
+          profilePicture: profilePictureUrl,
+          avatar: profilePictureUrl,
+          coverImage: coverImageUrl,
           skills: formData.skills,
           experience: formData.experience
         } : {
@@ -206,10 +234,15 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
           lastName,
           headline: formData.headline,
           location: formData.location,
+          bio: formData.about,
+          profilePicture: profilePictureUrl,
+          avatar: profilePictureUrl,
+          coverImage: coverImageUrl,
           skills: formData.skills,
           experience: formData.experience
         };
         
+        console.log('Updated data being sent to onSave:', updatedData); // Debug log
         onSave(updatedData);
         onClose();
       } else {

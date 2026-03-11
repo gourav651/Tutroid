@@ -5,7 +5,9 @@ import { useAuth } from "../../context/AuthContext";
 import EditProfileModal from "../components/EditProfileModal";
 import DirectMessageModal from "../../components/DirectMessageModal";
 import PostCard from "../components/PostCard";
+import PostDetailModal from "../../components/PostDetailModal";
 import ApiService from "../../services/api";
+import { DEFAULT_PROFILE_IMAGE } from "../../utils/constants";
 import {
   ArrowLeft,
   MapPin,
@@ -37,6 +39,8 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   // State for edit modal, profiles and posts
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  const [isPostDetailModalOpen, setIsPostDetailModalOpen] = useState(false);
+  const [selectedPost, setSelectedPost] = useState(null);
   const [profileData, setProfileData] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -433,7 +437,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       headline: profileData.headline || "Member at Tutroid",
       location: profileData.location || "Location not set",
       avatar:
-        profileData.profilePicture || profileData.avatar || profile.avatar,
+        profileData.profilePicture || profileData.avatar || DEFAULT_PROFILE_IMAGE,
       coverImage: profileData.coverImage || null,
       skills: profileData.trainerProfile?.skills || profileData.skills || [],
       analytics: {
@@ -457,7 +461,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         degree: edu.degree,
         field: edu.fieldOfStudy,
         years: formatDateRange(edu.startDate, edu.endDate, false),
-        logo: `https://ui-avatars.com/api/?name=${encodeURIComponent(edu.school)}&background=random`,
+        logo: DEFAULT_PROFILE_IMAGE,
       })),
       experience: (profileData.experience || []).map((exp) => ({
         title: exp.title,
@@ -466,7 +470,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         years: formatDateRange(exp.startDate, exp.endDate, exp.isCurrent),
         type: "Full-time", // Mock for now
         duration: "Variable",
-        logo: `https://ui-avatars.com/api/?name=${encodeURIComponent(exp.company)}&background=random`,
+        logo: DEFAULT_PROFILE_IMAGE,
       })),
       programs: [], // Placeholder for institute programs
     };
@@ -538,32 +542,31 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   const handleSaveProfile = (updatedUser) => {
     console.log("Received updated user data:", updatedUser); // Debug log
 
+    // Immediately update the profile data with the new values
     setProfileData((prev) => {
-      // Create a clean merge that completely overrides headline and about separately
       const merged = {
         ...prev,
-        // Explicitly set all fields from updatedUser, overriding any old data
-        firstName: updatedUser.firstName || prev.firstName,
-        lastName: updatedUser.lastName || prev.lastName,
-        headline: updatedUser.headline, // Force override with new headline
-        location: updatedUser.location || prev.location,
-        profilePicture: updatedUser.profilePicture || prev.profilePicture,
-        avatar: updatedUser.avatar || prev.avatar,
-        coverImage: updatedUser.coverImage || prev.coverImage,
+        // Explicitly set all fields from updatedUser
+        firstName: updatedUser.firstName !== undefined ? updatedUser.firstName : prev.firstName,
+        lastName: updatedUser.lastName !== undefined ? updatedUser.lastName : prev.lastName,
+        headline: updatedUser.headline !== undefined ? updatedUser.headline : prev.headline,
+        location: updatedUser.location !== undefined ? updatedUser.location : prev.location,
+        bio: updatedUser.bio !== undefined ? updatedUser.bio : prev.bio,
+        profilePicture: updatedUser.profilePicture !== undefined ? updatedUser.profilePicture : prev.profilePicture,
+        avatar: updatedUser.avatar !== undefined ? updatedUser.avatar : (updatedUser.profilePicture !== undefined ? updatedUser.profilePicture : prev.avatar),
+        coverImage: updatedUser.coverImage !== undefined ? updatedUser.coverImage : prev.coverImage,
         // Ensure trainerProfile is properly merged if it exists
         trainerProfile: updatedUser.trainerProfile
           ? {
               ...prev.trainerProfile,
               ...updatedUser.trainerProfile,
+              skills: updatedUser.trainerProfile.skills !== undefined ? updatedUser.trainerProfile.skills : prev.trainerProfile?.skills,
             }
           : prev.trainerProfile,
         // Ensure skills are properly updated from both sources
-        skills:
-          updatedUser.skills ||
-          updatedUser.trainerProfile?.skills ||
-          prev.skills,
+        skills: updatedUser.skills !== undefined ? updatedUser.skills : (updatedUser.trainerProfile?.skills !== undefined ? updatedUser.trainerProfile.skills : prev.skills),
         // Ensure experience is properly updated
-        experience: updatedUser.experience || prev.experience,
+        experience: updatedUser.experience !== undefined ? updatedUser.experience : prev.experience,
       };
 
       console.log("Merged profile data:", merged); // Debug log
@@ -589,6 +592,11 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     }
 
     setSaveSuccess(true);
+    
+    // Reload profile data from server to ensure consistency
+    setTimeout(() => {
+      loadProfile();
+    }, 500);
   };
 
   // Create Post Handlers
@@ -624,6 +632,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     setIsSubmitting(true);
     try {
       let imageUrl = null;
+      let uploadedFileType = null;
 
       // Upload image if selected
       if (selectedImage && imagePreview !== "pdf") {
@@ -633,6 +642,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         );
         if (uploadResponse.success) {
           imageUrl = uploadResponse.data.url;
+          uploadedFileType = uploadResponse.data.fileType;
         }
       } else if (selectedImage && imagePreview === "pdf") {
         const uploadResponse = await ApiService.uploadFile(
@@ -641,6 +651,17 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         );
         if (uploadResponse.success) {
           imageUrl = uploadResponse.data.url;
+          uploadedFileType = uploadResponse.data.fileType || 'pdf';
+        }
+      }
+
+      // Determine post type
+      let postType = "text";
+      if (imageUrl) {
+        if (uploadedFileType === 'pdf' || imagePreview === "pdf") {
+          postType = "pdf";
+        } else {
+          postType = "image";
         }
       }
 
@@ -648,7 +669,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       const response = await ApiService.createPost({
         content: postText.trim(),
         imageUrl: imageUrl,
-        type: imagePreview === "pdf" ? "pdf" : selectedImage ? "image" : "text",
+        type: postType,
       });
 
       if (response.success) {
@@ -899,7 +920,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
               ) : (
                 <>
                   {/* Show Hire button only when institution views trainer profile */}
-                  {isInstitute && profileData?.role === "TRAINER" ? (
+                  {isInstitute && profileData?.role === "TRAINER" && (
                     <button
                       onClick={handleHireInterest}
                       disabled={hireInterestSent}
@@ -910,12 +931,6 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                       } transition-all duration-300 shadow-md hover:shadow-lg`}
                     >
                       {hireInterestSent ? "Interest Sent ✓" : "Hire"}
-                    </button>
-                  ) : (
-                    <button
-                      className={`w-full px-6 py-3.5 rounded-full text-base font-semibold ${theme.accentBg} text-white hover:opacity-90 transition-all duration-300 shadow-md hover:shadow-lg`}
-                    >
-                      {isInstitute ? "Follow" : "Connect"}
                     </button>
                   )}
                   <button
@@ -1036,12 +1051,6 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 <h2 className={`text-lg font-semibold ${theme.textPrimary}`}>
                   Analytics
                 </h2>
-                <span className={`text-sm ${theme.textMuted}`}>
-                  <span className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                    Private to you
-                  </span>
-                </span>
               </div>
 
               {analyticsLoading ? (
@@ -1091,30 +1100,6 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                       </div>
                     </div>
                   </div>
-
-                  {/* Additional Analytics Details */}
-                  {analytics && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className={`text-sm ${theme.textMuted}`}>
-                          <span className="font-medium">Total Posts:</span>{" "}
-                          <span className={theme.textPrimary}>
-                            {analytics.content?.totalPosts || 0}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => {
-                      console.log("Full analytics:", analytics);
-                      alert("Detailed analytics view coming soon!");
-                    }}
-                    className={`mt-4 text-sm ${theme.accentColor} font-medium hover:underline`}
-                  >
-                    Show all analytics →
-                  </button>
                 </>
               )}
             </div>
@@ -1184,6 +1169,10 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                             onEdit={handleEditPost}
                             isOwnProfile={isOwnProfile} // True if viewing own profile, false if viewing other trainer's profile
                             onReviewUpdate={handleReviewUpdate}
+                            onPostClick={(post) => {
+                              setSelectedPost(post);
+                              setIsPostDetailModalOpen(true);
+                            }}
                           />
                         ),
                       )}
@@ -1455,7 +1444,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                             <img
                               src={
                                 trainer.user?.profilePicture ||
-                                `https://ui-avatars.com/api/?name=${encodeURIComponent(trainer.user?.firstName || "T")}&background=random`
+                                DEFAULT_PROFILE_IMAGE
                               }
                               alt={trainer.user?.firstName || "Trainer"}
                               className="w-12 h-12 rounded-full object-cover"
@@ -1538,7 +1527,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                           <img
                             src={
                               institution.user?.profilePicture ||
-                              `https://ui-avatars.com/api/?name=${encodeURIComponent(institution.name || "I")}&background=random`
+                              DEFAULT_PROFILE_IMAGE
                             }
                             alt={institution.name || "Institution"}
                             className="w-12 h-12 rounded-lg object-cover"
@@ -1833,6 +1822,24 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
           </div>
         </div>
       )}
+
+      {/* Post Detail Modal */}
+      <PostDetailModal
+        isOpen={isPostDetailModalOpen}
+        onClose={() => {
+          setIsPostDetailModalOpen(false);
+          setSelectedPost(null);
+        }}
+        post={selectedPost}
+        user={{ id: profileData?.id || authUser?.id }}
+        isSaved={false}
+        onSave={() => console.log("Save post:", selectedPost?.id)}
+        onShare={() => console.log("Share post:", selectedPost?.id)}
+        onDelete={handleDeletePost}
+        onEdit={handleEditPost}
+        isOwnProfile={isOwnProfile}
+        onReviewUpdate={handleReviewUpdate}
+      />
     </div>
   );
 }
