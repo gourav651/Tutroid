@@ -35,13 +35,18 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
   const profileInputRef = useRef(null);
   const coverInputRef = useRef(null);
 
-  // Update form data when profileData changes
+  // Update form data when profileData changes or modal opens
   useEffect(() => {
-    if (profileData) {
+    if (profileData && isOpen) {
+      const displayName = profileData.firstName
+        ? `${profileData.firstName} ${profileData.lastName || ""}`.trim()
+        : profileData.name || "";
+        
       setFormData({
-        name: getDisplayName(),
-        headline: profileData.headline || "", // Ensure headline is properly initialized
+        name: displayName,
+        headline: profileData.headline || "",
         location: profileData.location || "",
+        about: profileData.bio || "",
         skills: profileData.trainerProfile?.skills || profileData.skills || [],
         experience: profileData.experience || [],
         avatar: profileData.profilePicture || profileData.avatar || DEFAULT_PROFILE_IMAGE,
@@ -49,8 +54,13 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
       });
       setProfilePreview(profileData.profilePicture || profileData.avatar || DEFAULT_PROFILE_IMAGE);
       setCoverPreview(profileData.coverImage || null);
+      
+      // Reset file states when modal opens
+      setProfileFile(null);
+      setCoverFile(null);
+      setError(null);
     }
-  }, [profileData]);
+  }, [profileData, isOpen]);
 
   if (!isOpen) return null;
 
@@ -147,6 +157,13 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
     setError(null);
 
     try {
+      // Validate required fields
+      if (!formData.name?.trim()) {
+        setError("Name is required");
+        setLoading(false);
+        return;
+      }
+
       // Upload photos first if changed
       let profilePictureUrl = formData.avatar;
       let coverImageUrl = formData.coverImage;
@@ -167,11 +184,11 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
       }
 
       // Split name for backend
-      let firstName = formData.name;
+      let firstName = formData.name.trim();
       let lastName = "";
 
       if (!isInstitute && formData.name.includes(" ")) {
-        const parts = formData.name.split(" ");
+        const parts = formData.name.trim().split(" ");
         firstName = parts[0];
         lastName = parts.slice(1).join(" ");
       }
@@ -188,48 +205,22 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
         bio: formData.about,
         profilePicture: profilePictureUrl,
         coverImage: coverImageUrl,
-        avatar: profilePictureUrl,
         skills: formData.skills || [],
         experience: formData.experience || []
       };
 
-      // For trainers, also include skills in trainerProfile
-      if (isTrainer) {
-        updateData.trainerProfile = {
-          skills: formData.skills || []
-        };
-      }
-
       console.log('Sending update data:', updateData); // Debug log
 
-      const response = isTrainer 
-        ? await ApiService.updateTrainerProfile(updateData)
-        : await ApiService.updateGeneralProfile(updateData);
+      // Use the general profile endpoint for all user types for consistency
+      const response = await ApiService.updateGeneralProfile(updateData);
 
       console.log('Update response:', response); // Debug log
 
       if (response.success) {
-        // Handle the response structure from trainer endpoint
-        const updatedData = response.data.user ? {
-          ...response.data.user,
-          trainerProfile: response.data.profile ? {
-            ...response.data.profile,
-            skills: formData.skills || []
-          } : undefined,
-          // Include the updated fields for immediate UI update
-          firstName,
-          lastName,
-          headline: formData.headline,
-          location: formData.location,
-          bio: formData.about,
-          profilePicture: profilePictureUrl,
-          avatar: profilePictureUrl,
-          coverImage: coverImageUrl,
-          skills: formData.skills,
-          experience: formData.experience
-        } : {
+        // The general endpoint returns the complete user object with all relations
+        const updatedData = {
           ...response.data,
-          // Include the updated fields for immediate UI update
+          // Ensure the updated fields are properly included for immediate UI update
           firstName,
           lastName,
           headline: formData.headline,
@@ -255,6 +246,8 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
       // Handle specific user not found error
       if (err.message && err.message.includes("User account not found")) {
         setError("Your session has expired. Please log out and create a new account.");
+      } else if (err.message && err.message.includes("Network")) {
+        setError("Network error. Please check your connection and try again.");
       } else {
         setError(err.message || "Failed to save profile. Please try again.");
       }

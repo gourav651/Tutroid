@@ -77,12 +77,10 @@ export const updateMyProfile = async (req, res, next) => {
       updatedUser = await updateUserProfileService(userId, userUpdate);
     }
 
-    // Update trainer profile (bio, location, skills)
+    // Update trainer profile (bio, skills, experience)
     // Note: experience is stored as Int (years), skills as String[]
     const profileUpdate = {};
-    if (headline !== undefined) profileUpdate.bio = headline;
     if (bio !== undefined) profileUpdate.bio = bio;
-    if (location !== undefined) profileUpdate.location = location;
     if (Array.isArray(skills)) profileUpdate.skills = skills;
     // Only update experience if it's a number (years)
     if (typeof experience === "number") profileUpdate.experience = experience;

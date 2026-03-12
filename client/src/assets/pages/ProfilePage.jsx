@@ -569,7 +569,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     setProfileData((prev) => {
       const merged = {
         ...prev,
-        // Explicitly set all fields from updatedUser
+        // Explicitly set all fields from updatedUser, ensuring we handle both direct fields and nested profile fields
         firstName: updatedUser.firstName !== undefined ? updatedUser.firstName : prev.firstName,
         lastName: updatedUser.lastName !== undefined ? updatedUser.lastName : prev.lastName,
         headline: updatedUser.headline !== undefined ? updatedUser.headline : prev.headline,
@@ -578,18 +578,21 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
         profilePicture: updatedUser.profilePicture !== undefined ? updatedUser.profilePicture : prev.profilePicture,
         avatar: updatedUser.avatar !== undefined ? updatedUser.avatar : (updatedUser.profilePicture !== undefined ? updatedUser.profilePicture : prev.avatar),
         coverImage: updatedUser.coverImage !== undefined ? updatedUser.coverImage : prev.coverImage,
-        // Ensure trainerProfile is properly merged if it exists
-        trainerProfile: updatedUser.trainerProfile
-          ? {
-              ...prev.trainerProfile,
-              ...updatedUser.trainerProfile,
-              skills: updatedUser.trainerProfile.skills !== undefined ? updatedUser.trainerProfile.skills : prev.trainerProfile?.skills,
-            }
-          : prev.trainerProfile,
-        // Ensure skills are properly updated from both sources
-        skills: updatedUser.skills !== undefined ? updatedUser.skills : (updatedUser.trainerProfile?.skills !== undefined ? updatedUser.trainerProfile.skills : prev.skills),
-        // Ensure experience is properly updated
+        // Handle skills from multiple possible sources
+        skills: updatedUser.skills !== undefined ? updatedUser.skills : 
+                (updatedUser.trainerProfile?.skills !== undefined ? updatedUser.trainerProfile.skills : prev.skills),
+        // Handle experience
         experience: updatedUser.experience !== undefined ? updatedUser.experience : prev.experience,
+        // Ensure trainerProfile is properly merged if it exists
+        trainerProfile: updatedUser.trainerProfile ? {
+          ...prev.trainerProfile,
+          ...updatedUser.trainerProfile,
+          skills: updatedUser.trainerProfile.skills !== undefined ? updatedUser.trainerProfile.skills : 
+                  (updatedUser.skills !== undefined ? updatedUser.skills : prev.trainerProfile?.skills),
+        } : prev.trainerProfile ? {
+          ...prev.trainerProfile,
+          skills: updatedUser.skills !== undefined ? updatedUser.skills : prev.trainerProfile.skills,
+        } : prev.trainerProfile,
       };
 
       console.log("Merged profile data:", merged); // Debug log
@@ -618,12 +621,11 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     }
 
     setSaveSuccess(true);
-    setImageRefreshKey(Date.now());
     
     // Reload profile data from server after a brief delay to ensure backend has processed the update
     setTimeout(() => {
       loadProfile();
-    }, 300);
+    }, 500); // Increased delay to ensure backend consistency
   };
 
   // Create Post Handlers
