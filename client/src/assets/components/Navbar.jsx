@@ -522,16 +522,6 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
                     <User size={15} />
                     View Profile
                   </button>
-                  <button
-                    onClick={() => {
-                      navigate(getDashboardRoute());
-                      setShowUserMenu(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-colors`}
-                  >
-                    <Home size={15} />
-                    Dashboard
-                  </button>
                   {userType === USER_TYPES.TRAINER && (
                     <button onClick={() => navigate("/trainer/reviews")}
                       className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-colors`}
