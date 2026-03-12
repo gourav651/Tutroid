@@ -246,10 +246,13 @@ class ApiService {
   static async searchTrainers(filters = {}) {
     // Map frontend filter names to backend query params
     const query = {
+      search: filters.search,
       skill: filters.skills || filters.skill,
       location: filters.location,
       minExp: filters.minExperience ?? filters.minExp,
       maxExp: filters.maxExperience ?? filters.maxExp,
+      minRating: filters.minRating,
+      verified: filters.verified,
       page: filters.page ?? 1,
       limit: filters.limit ?? 12,
       sort: filters.sort ?? "newest",
@@ -265,7 +268,9 @@ class ApiService {
   static async searchInstitutions(filters = {}) {
     // Map frontend filter names to backend query params
     const query = {
+      search: filters.search,
       location: filters.location,
+      minRating: filters.minRating,
       page: filters.page ?? 1,
       limit: filters.limit ?? 12,
       sort: filters.sort ?? "newest",

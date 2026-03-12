@@ -1,7 +1,7 @@
 import client from "../../db.js";
 
 export const searchTrainersService = async (filters = {}) => {
-  const { skill, location, minExp, maxExp, page = 1, limit = 10, sort = 'newest' } = filters;
+  const { skill, location, minExp, maxExp, page = 1, limit = 10, sort = 'newest', search, minRating, verified } = filters;
 
   // Convert to numbers to ensure Prisma gets integers
   const pageNum = parseInt(page) || 1;
@@ -11,22 +11,70 @@ export const searchTrainersService = async (filters = {}) => {
     isActive: true,
   };
 
-  if (skill) {
+  // General search - searches across name, uniqueId, skills, location
+  if (search && search.trim()) {
+    const searchTerm = search.trim();
+    where.OR = [
+      // Search by uniqueId (e.g., TRN0001)
+      { uniqueId: { contains: searchTerm, mode: "insensitive" } },
+      // Search by skills
+      { skills: { has: searchTerm } },
+      { skills: { hasSome: searchTerm.split(/[\s,]+/).filter(Boolean) } },
+      // Search by location
+      { location: { contains: searchTerm, mode: "insensitive" } },
+      // Search by bio
+      { bio: { contains: searchTerm, mode: "insensitive" } },
+      // Search by user name
+      {
+        user: {
+          OR: [
+            { firstName: { contains: searchTerm, mode: "insensitive" } },
+            { lastName: { contains: searchTerm, mode: "insensitive" } },
+            { username: { contains: searchTerm, mode: "insensitive" } },
+          ],
+        },
+      },
+    ];
+  }
+
+  // Specific skill filter (only apply if not using general search)
+  if (skill && skill.trim() && !search) {
     where.skills = { has: skill };
   }
 
-  if (location) {
+  // Location filter (only apply if not using general search)
+  if (location && location.trim() && !search) {
     where.location = {
       contains: location,
       mode: "insensitive",
     };
   }
 
+  // Experience range filter
   if (minExp !== undefined || maxExp !== undefined) {
-    where.experience = {
-      gte: minExp ?? undefined,
-      lte: maxExp ?? undefined,
+    where.experience = {};
+    if (minExp !== undefined && minExp !== '') {
+      where.experience.gte = parseInt(minExp);
+    }
+    if (maxExp !== undefined && maxExp !== '') {
+      where.experience.lte = parseInt(maxExp);
+    }
+    // Remove empty experience filter
+    if (Object.keys(where.experience).length === 0) {
+      delete where.experience;
+    }
+  }
+
+  // Minimum rating filter
+  if (minRating !== undefined && minRating !== '') {
+    where.rating = {
+      gte: parseFloat(minRating),
     };
+  }
+
+  // Verified filter
+  if (verified === true || verified === 'true') {
+    where.verified = true;
   }
 
   const orderByMap = {
@@ -34,7 +82,10 @@ export const searchTrainersService = async (filters = {}) => {
     experience_desc: { experience: "desc" },
     newest: { createdAt: "desc" },
     rating: { rating: "desc" },
+    rating_desc: { rating: "desc" },
   };
+
+  console.log('Trainer search where clause:', JSON.stringify(where, null, 2));
 
   // Optimized: Parallel queries with minimal data selection
   const [trainers, total] = await Promise.all([
@@ -61,12 +112,15 @@ export const searchTrainersService = async (filters = {}) => {
             lastName: true,
             profilePicture: true,
             isVerified: true,
+            headline: true,
           },
         },
       },
     }),
     client.trainerProfile.count({ where }),
   ]);
+
+  console.log('Trainer search results:', trainers.length);
 
   return {
     data: trainers,

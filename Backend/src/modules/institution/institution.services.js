@@ -62,7 +62,7 @@ export const getMyInstitutionProfileService = async (userId) => {
 };
 
 export const searchInstitutionsService = async (filters = {}) => {
-  const { location, page = 1, limit = 12 } = filters;
+  const { location, page = 1, limit = 12, search, minRating, sort = 'newest' } = filters;
   
   // Convert to numbers to ensure Prisma gets integers
   const pageNum = parseInt(page) || 1;
@@ -74,7 +74,47 @@ export const searchInstitutionsService = async (filters = {}) => {
       role: "INSTITUTION",
       isActive: true,
     },
-    ...(location && { location: { contains: location, mode: "insensitive" } }),
+  };
+
+  // General search - searches across name, uniqueId, location
+  if (search && search.trim()) {
+    const searchTerm = search.trim();
+    where.OR = [
+      // Search by uniqueId (e.g., INST0001)
+      { uniqueId: { contains: searchTerm, mode: "insensitive" } },
+      // Search by institution name
+      { name: { contains: searchTerm, mode: "insensitive" } },
+      // Search by location
+      { location: { contains: searchTerm, mode: "insensitive" } },
+      // Search by user name
+      {
+        user: {
+          OR: [
+            { firstName: { contains: searchTerm, mode: "insensitive" } },
+            { lastName: { contains: searchTerm, mode: "insensitive" } },
+            { username: { contains: searchTerm, mode: "insensitive" } },
+          ],
+        },
+      },
+    ];
+  }
+
+  // Location filter (in addition to general search)
+  if (location && location.trim() && !search) {
+    where.location = { contains: location, mode: "insensitive" };
+  }
+
+  // Minimum rating filter
+  if (minRating !== undefined && minRating !== '') {
+    where.rating = {
+      gte: parseFloat(minRating),
+    };
+  }
+
+  // Sort options
+  const orderByMap = {
+    rating_desc: { rating: "desc" },
+    newest: { createdAt: "desc" },
   };
 
   // Optimized: Parallel queries with minimal data selection
@@ -91,8 +131,11 @@ export const searchInstitutionsService = async (filters = {}) => {
         user: {
           select: {
             id: true,
+            firstName: true,
+            lastName: true,
             profilePicture: true,
             isVerified: true,
+            headline: true,
           },
         },
         _count: {
@@ -101,7 +144,7 @@ export const searchInstitutionsService = async (filters = {}) => {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: orderByMap[sort] || { createdAt: "desc" },
       skip,
       take: limitNum,
     }),

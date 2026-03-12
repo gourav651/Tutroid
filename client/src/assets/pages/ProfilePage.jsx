@@ -71,6 +71,9 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   // Verification state
   const [verificationStatus, setVerificationStatus] = useState(null);
   const [loadingVerification, setLoadingVerification] = useState(false);
+  
+  // Image refresh timestamp to force re-render
+  const [imageRefreshKey, setImageRefreshKey] = useState(Date.now());
 
   const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -116,6 +119,26 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     fetchTrainers();
     fetchInstitutions();
   }, [loadProfile]);
+
+  // Handle shared post parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const sharedPostId = urlParams.get('post');
+    
+    if (sharedPostId && posts.length > 0) {
+      // Find the shared post
+      const sharedPost = posts.find(post => post.id === sharedPostId);
+      if (sharedPost) {
+        // Open the post in modal
+        setSelectedPost(sharedPost);
+        setIsPostDetailModalOpen(true);
+        
+        // Remove the post parameter from URL without page reload
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, [location.search, posts]);
 
   // Separate effect for verification status - only load when profile data is ready
   useEffect(() => {
@@ -572,6 +595,9 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       console.log("Merged profile data:", merged); // Debug log
       return merged;
     });
+    
+    // Force image refresh by updating the key
+    setImageRefreshKey(Date.now());
 
     // Dispatch event for sidebar sync
     window.dispatchEvent(
@@ -592,11 +618,12 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     }
 
     setSaveSuccess(true);
+    setImageRefreshKey(Date.now());
     
-    // Reload profile data from server to ensure consistency
+    // Reload profile data from server after a brief delay to ensure backend has processed the update
     setTimeout(() => {
       loadProfile();
-    }, 500);
+    }, 300);
   };
 
   // Create Post Handlers
@@ -816,9 +843,10 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
           >
             {data.coverImage && (
               <img
-                src={data.coverImage}
+                src={`${data.coverImage}?v=${imageRefreshKey}`}
                 alt="Cover"
                 className="w-full h-full object-cover"
+                key={`cover-${imageRefreshKey}`}
               />
             )}
             {isOwnProfile && (
@@ -837,9 +865,10 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
             <div className="relative -mt-12 sm:-mt-16 mb-4">
               <div className="relative inline-block">
                 <img
-                  src={data.avatar || profile.avatar}
+                  src={`${data.avatar || profile.avatar}?v=${imageRefreshKey}`}
                   alt={data.name}
                   className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full border-4 border-white dark:border-slate-800 shadow-lg object-cover"
+                  key={`avatar-${imageRefreshKey}`}
                 />
                 {isOwnProfile && (
                   <button
@@ -1679,14 +1708,19 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
             <div className="flex items-center gap-3 px-5 py-3">
               <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-sm">
                 <span className="text-white font-bold text-sm">
-                  {(authUser?.firstName || authUser?.name || "U")
+                  {(profileData?.firstName || authUser?.firstName || authUser?.name || "U")
                     .charAt(0)
                     .toUpperCase()}
                 </span>
               </div>
               <div>
                 <div className={`font-semibold text-sm ${theme.textPrimary}`}>
-                  {authUser?.firstName || authUser?.name || "Anonymous User"}
+                  {data?.name || 
+                   (profileData?.firstName 
+                    ? `${profileData.firstName} ${profileData.lastName || ''}`.trim() 
+                    : authUser?.firstName 
+                      ? `${authUser.firstName} ${authUser.lastName || ''}`.trim()
+                      : "User")}
                 </div>
                 <div className={`text-xs ${theme.textMuted}`}>
                   Post to anyone • Public

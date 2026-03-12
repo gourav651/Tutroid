@@ -710,7 +710,9 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
               </div>
               <div>
                 <div className={`font-semibold text-sm ${theme.textPrimary}`}>
-                  {user?.name || user?.firstName || "Anonymous User"}
+                  {user?.firstName 
+                    ? `${user.firstName} ${user.lastName || ''}`.trim() 
+                    : user?.name || "User"}
                 </div>
                 <div className={`text-xs ${theme.textMuted}`}>Post to anyone • 🌐 Public</div>
               </div>

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { X, Search, Filter, Star, MapPin, Briefcase, UserPlus, Loader, ChevronDown, Award, TrendingUp, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { X, Search, Filter, Star, MapPin, Briefcase, User, Loader, ChevronDown, Award, TrendingUp, CheckCircle2 } from "lucide-react";
 import ApiService from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 
 const DiscoveryPanel = ({ isOpen, onClose }) => {
+  const navigate = useNavigate();
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [skills, setSkills] = useState([]);
@@ -63,21 +65,29 @@ const DiscoveryPanel = ({ isOpen, onClose }) => {
   const performSearch = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
+      setResults([]); // Clear previous results
       
-      // Add role parameter
-      if (searchRole) {
-        params.append('role', searchRole);
+      let response;
+      if (searchRole === "TRAINER") {
+        response = await ApiService.searchTrainers(filters);
+        console.log('Trainer search response:', response);
+        setResults(response.data || []);
+      } else if (searchRole === "INSTITUTION") {
+        response = await ApiService.searchInstitutions(filters);
+        console.log('Institution search response:', response);
+        setResults(response.data || []); // Changed from response.institutions to response.data
+      } else {
+        // Search both trainers and institutions
+        const [trainersRes, institutionsRes] = await Promise.all([
+          ApiService.searchTrainers(filters),
+          ApiService.searchInstitutions(filters)
+        ]);
+        console.log('Combined search response:', { trainersRes, institutionsRes });
+        setResults([...(trainersRes.data || []), ...(institutionsRes.data || [])]); // Changed from institutionsRes.institutions
       }
-      
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
-      });
-
-      const response = await ApiService.request(`/discovery/search?${params}`);
-      setResults(response.data || []);
     } catch (error) {
       console.error("Search failed:", error);
+      setResults([]);
     } finally {
       setLoading(false);
     }
@@ -340,110 +350,145 @@ const DiscoveryPanel = ({ isOpen, onClose }) => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              {results.map(result => (
-                <div key={result.id} className={`${theme.cardBg} rounded-xl p-4 sm:p-6 border ${theme.cardBorder} hover:shadow-lg transition group`}>
-                  <div className="flex items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
-                    <div className="relative">
-                      {result.profilePicture ? (
-                        <img 
-                          src={result.profilePicture} 
-                          alt={`${result.firstName} ${result.lastName}`}
-                          className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full object-cover shadow-lg"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-base sm:text-lg md:text-xl font-bold shadow-lg">
-                          {result.profile?.name ? result.profile.name[0] : `${result.firstName?.[0] || ''}${result.lastName?.[0] || ''}`}
-                        </div>
-                      )}
-                      {result.profile?.verified && (
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
-                          <Award className="w-2 h-2 sm:w-3 sm:h-3 text-white" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className={`font-semibold text-sm sm:text-base ${theme.textPrimary} truncate`}>
-                          {result.profile?.name || `${result.firstName} ${result.lastName}`}
-                        </h3>
-                        {/* Show verified badge if user is verified */}
-                        {result.isVerified && (
-                          <CheckCircle2 className="w-4 h-4 text-blue-500 flex-shrink-0" title="Verified" />
+              {results.map(result => {
+                // Determine if this is a trainer or institution
+                const isTrainer = result.user && result.skills;
+                const isInstitution = result.name;
+                
+                // Normalize data structure
+                const displayName = isInstitution 
+                  ? result.name 
+                  : result.user 
+                    ? `${result.user.firstName || ''} ${result.user.lastName || ''}`.trim() || 'Unknown'
+                    : 'Unknown';
+                
+                const profilePicture = result.user?.profilePicture;
+                const uniqueId = result.uniqueId;
+                const rating = result.rating || 0;
+                const location = result.location;
+                const isVerified = result.user?.isVerified || result.verified;
+                const headline = result.user?.headline || (isTrainer ? 'Trainer' : 'Institution');
+                const bio = result.bio;
+                const skills = result.skills || [];
+                const experience = result.experience;
+                
+                return (
+                  <div key={result.id} className={`${theme.cardBg} rounded-xl p-4 sm:p-6 border ${theme.cardBorder} hover:shadow-lg transition group`}>
+                    <div className="flex items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
+                      <div className="relative">
+                        {profilePicture ? (
+                          <img 
+                            src={profilePicture} 
+                            alt={displayName}
+                            className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full object-cover shadow-lg"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-base sm:text-lg md:text-xl font-bold shadow-lg">
+                            {displayName && displayName !== 'Unknown' ? displayName[0].toUpperCase() : '?'}
+                          </div>
                         )}
-                        {result.profile?.uniqueId && (
-                          <span className={`text-xs ${theme.textMuted} font-mono px-2 py-0.5 rounded border ${theme.cardBorder}`}>
-                            {result.profile.uniqueId}
-                          </span>
+                        {isVerified && (
+                          <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
+                            <Award className="w-2 h-2 sm:w-3 sm:h-3 text-white" />
+                          </div>
                         )}
                       </div>
-                      <p className={`text-xs sm:text-sm ${theme.textSecondary} truncate mb-2`}>
-                        {result.headline || result.role}
-                      </p>
-                      
-                      {result.profile && (
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className={`font-semibold text-sm sm:text-base ${theme.textPrimary} truncate`}>
+                            {displayName}
+                          </h3>
+                          {isVerified && (
+                            <CheckCircle2 className="w-4 h-4 text-blue-500 flex-shrink-0" title="Verified" />
+                          )}
+                          {uniqueId && (
+                            <span className={`text-xs ${theme.textMuted} font-mono px-2 py-0.5 rounded border ${theme.cardBorder}`}>
+                              {uniqueId}
+                            </span>
+                          )}
+                        </div>
+                        <p className={`text-xs sm:text-sm ${theme.textSecondary} truncate mb-2`}>
+                          {headline}
+                        </p>
+                        
                         <div className="flex items-center gap-3 flex-wrap">
-                          {result.profile.rating > 0 && (
+                          {rating > 0 && (
                             <div className="flex items-center gap-1">
                               <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                               <span className={`text-sm font-semibold ${theme.textPrimary}`}>
-                                {result.profile.rating.toFixed(1)}
+                                {rating.toFixed(1)}
                               </span>
                             </div>
                           )}
                           
-                          {result.profile.location && (
+                          {location && (
                             <div className="flex items-center gap-1">
                               <MapPin className={`w-4 h-4 ${theme.textMuted}`} />
                               <span className={`text-xs ${theme.textSecondary}`}>
-                                {result.profile.location}
+                                {location}
                               </span>
                             </div>
                           )}
 
-                          {result.profile.experience !== undefined && (
+                          {experience !== undefined && (
                             <div className="flex items-center gap-1">
                               <Briefcase className={`w-4 h-4 ${theme.textMuted}`} />
                               <span className={`text-xs ${theme.textSecondary}`}>
-                                {result.profile.experience}y exp
+                                {experience}y exp
                               </span>
                             </div>
                           )}
                         </div>
-                      )}
+                      </div>
                     </div>
+
+                    {/* Bio */}
+                    {bio && (
+                      <p className={`text-sm ${theme.textSecondary} mb-3 line-clamp-2`}>
+                        {bio}
+                      </p>
+                    )}
+
+                    {skills && skills.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {skills.slice(0, 4).map(skill => (
+                          <span key={skill} className={`px-3 py-1 ${theme.inputBg} ${theme.textSecondary} text-xs rounded-full font-medium border ${theme.cardBorder}`}>
+                            {skill}
+                          </span>
+                        ))}
+                        {skills.length > 4 && (
+                          <span className={`px-3 py-1 ${theme.inputBg} ${theme.textMuted} text-xs rounded-full font-medium`}>
+                            +{skills.length - 4} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        // Determine the correct route based on user type
+                        const username = result.user?.username || result.user?.id;
+                        if (username) {
+                          let profileRoute;
+                          if (isTrainer) {
+                            profileRoute = `/trainer/profile/${username}`;
+                          } else if (isInstitution) {
+                            profileRoute = `/institute/profile/${username}`;
+                          } else {
+                            profileRoute = `/profile/${username}`;
+                          }
+                          navigate(profileRoute);
+                          onClose();
+                        }
+                      }}
+                      className="w-full py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2 font-medium text-sm shadow-lg transition group-hover:shadow-xl"
+                    >
+                      <User className="w-4 h-4" />
+                      View Profile
+                    </button>
                   </div>
-
-                  {/* Bio */}
-                  {(result.bio || result.profile?.bio) && (
-                    <p className={`text-sm ${theme.textSecondary} mb-3 line-clamp-2`}>
-                      {result.bio || result.profile?.bio}
-                    </p>
-                  )}
-
-                  {result.profile?.skills && result.profile.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {result.profile.skills.slice(0, 4).map(skill => (
-                        <span key={skill} className={`px-3 py-1 ${theme.inputBg} ${theme.textSecondary} text-xs rounded-full font-medium border ${theme.cardBorder}`}>
-                          {skill}
-                        </span>
-                      ))}
-                      {result.profile.skills.length > 4 && (
-                        <span className={`px-3 py-1 ${theme.inputBg} ${theme.textMuted} text-xs rounded-full font-medium`}>
-                          +{result.profile.skills.length - 4} more
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => sendConnectionRequest(result.id)}
-                    className="w-full py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center justify-center gap-2 font-medium text-sm shadow-lg transition group-hover:shadow-xl"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    Connect
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

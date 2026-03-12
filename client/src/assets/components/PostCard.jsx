@@ -95,12 +95,15 @@ export default function PostCard({
   };
 
   const handleShare = async (method) => {
-    const postUrl = `${window.location.origin}/post/${post.id}`;
+    // Create a URL that points to the author's profile with the specific post ID
+    const authorRole = post.author?.role?.toLowerCase() || 'student';
+    const authorUsername = post.author?.username || post.author?.id;
+    const profileUrl = `${window.location.origin}/${authorRole}/profile/${authorUsername}?post=${post.id}`;
     const shareText = `Check out this post by ${authorName}: ${post.content?.substring(0, 100)}${post.content?.length > 100 ? '...' : ''}`;
 
     try {
       if (method === 'copy') {
-        await navigator.clipboard.writeText(postUrl);
+        await navigator.clipboard.writeText(profileUrl);
         setShareSuccess(true);
         setTimeout(() => {
           setShareSuccess(false);
@@ -110,17 +113,17 @@ export default function PostCard({
         await navigator.share({
           title: `Post by ${authorName}`,
           text: shareText,
-          url: postUrl,
+          url: profileUrl,
         });
         setShowShareMenu(false);
       } else if (method === 'twitter') {
-        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(postUrl)}`, '_blank');
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(profileUrl)}`, '_blank');
         setShowShareMenu(false);
       } else if (method === 'linkedin') {
-        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(postUrl)}`, '_blank');
+        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(profileUrl)}`, '_blank');
         setShowShareMenu(false);
       } else if (method === 'whatsapp') {
-        window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + postUrl)}`, '_blank');
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + profileUrl)}`, '_blank');
         setShowShareMenu(false);
       }
       
