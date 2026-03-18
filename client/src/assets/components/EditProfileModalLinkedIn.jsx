@@ -24,26 +24,47 @@ function EditProfileModalLinkedIn({ isOpen, onClose, userType, profileData, onSa
   const coverInputRef = useRef(null);
 
   // Set initial section when modal opens and reset form data
+  // Only reset form data when modal opens (isOpen changes from false to true)
   useEffect(() => {
     if (isOpen) {
       setActiveSection(initialSection);
+      
+      // Convert dates to years for form display
+      const experienceWithYears = (profileData.experience || []).map(exp => ({
+        ...exp,
+        startYear: exp.startDate ? new Date(exp.startDate).getFullYear().toString() : exp.startYear || "",
+        endYear: exp.isCurrent ? "" : (exp.endDate ? new Date(exp.endDate).getFullYear().toString() : exp.endYear || "")
+      }));
+      
+      const educationWithYears = (profileData.education || []).map(edu => ({
+        ...edu,
+        field: edu.fieldOfStudy || edu.field || "",
+        startYear: edu.startDate ? new Date(edu.startDate).getFullYear().toString() : edu.startYear || "",
+        endYear: edu.endDate ? new Date(edu.endDate).getFullYear().toString() : edu.endYear || ""
+      }));
+      
       const initialFormData = {
         ...profileData,
         name: profileData.firstName 
           ? `${profileData.firstName} ${profileData.lastName || ""}`.trim()
           : profileData.name || "",
+        about: profileData.bio || "",
         skills: profileData.trainerProfile?.skills || profileData.skills || []
       };
+      
       setFormData(initialFormData);
-      setEducation(profileData.education || []);
-      setExperience(profileData.experience || []);
+      setEducation(educationWithYears);
+      setExperience(experienceWithYears);
       setProfilePreview(profileData.avatar || profileData.profilePicture || null);
       setCoverPreview(profileData.coverImage || null);
       setError(null);
+      setProfileFile(null);
+      setCoverFile(null);
       console.log('Modal opened with skills:', initialFormData.skills); // Debug log
-      console.log('Modal opened with education:', profileData.education); // Debug log
+      console.log('Modal opened with education:', educationWithYears); // Debug log
+      console.log('Modal opened with experience:', experienceWithYears); // Debug log
     }
-  }, [isOpen, initialSection, profileData]);
+  }, [isOpen, initialSection, profileData]); // Removed profileData from dependencies to prevent reset on data changes
 
   if (!isOpen) return null;
 
@@ -142,12 +163,28 @@ function EditProfileModalLinkedIn({ isOpen, onClose, userType, profileData, onSa
         ...formData,
         firstName,
         lastName,
+        bio: formData.about || formData.bio,
         profilePicture: profilePictureUrl,
         coverImage: coverImageUrl,
         avatar: profilePictureUrl,
-        education: education.filter(edu => edu.school || edu.degree), // Only save non-empty education entries
-        experience: experience.filter(exp => exp.title || exp.company), // Only save non-empty experience entries
-        skills: formData.skills || [], // Ensure skills is always an array
+        education: education.filter(edu => edu.school || edu.degree).map(edu => ({
+          school: edu.school || "",
+          degree: edu.degree || "",
+          fieldOfStudy: edu.field || edu.fieldOfStudy || "",
+          startYear: edu.startYear || "",
+          endYear: edu.endYear || "",
+          description: edu.description || ""
+        })),
+        experience: experience.filter(exp => exp.title || exp.company).map(exp => ({
+          title: exp.title || "",
+          company: exp.company || "",
+          location: exp.location || "",
+          startYear: exp.startYear || "",
+          endYear: exp.isCurrent ? "" : (exp.endYear || ""),
+          isCurrent: exp.isCurrent || false,
+          description: exp.description || ""
+        })),
+        skills: formData.skills || [],
       };
 
       // For trainers, also include skills in trainerProfile
@@ -177,8 +214,8 @@ function EditProfileModalLinkedIn({ isOpen, onClose, userType, profileData, onSa
           const completeUpdatedData = {
             ...response.data,
             ...updateData, // Include all the data we just saved
-            education: education.filter(edu => edu.school || edu.degree),
-            experience: experience.filter(exp => exp.title || exp.company),
+            education: response.data.education || education.filter(edu => edu.school || edu.degree),
+            experience: response.data.experience || experience.filter(exp => exp.title || exp.company),
             skills: formData.skills || [],
             // Ensure trainerProfile skills are included for trainers
             trainerProfile: isTrainer ? {

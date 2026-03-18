@@ -35,12 +35,21 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
   const profileInputRef = useRef(null);
   const coverInputRef = useRef(null);
 
-  // Update form data when profileData changes or modal opens
+  // Update form data when modal opens with the latest profileData
+  // Reset form whenever modal opens to ensure fresh data is loaded
   useEffect(() => {
-    if (profileData && isOpen) {
+    if (isOpen && profileData) {
       const displayName = profileData.firstName
         ? `${profileData.firstName} ${profileData.lastName || ""}`.trim()
         : profileData.name || "";
+      
+      console.log("EditProfileModal: Loading data into form", {
+        headline: profileData.headline,
+        skills: profileData.trainerProfile?.skills || profileData.skills,
+        bio: profileData.bio,
+        education: profileData.education,
+        experience: profileData.experience
+      });
         
       setFormData({
         name: displayName,
@@ -48,7 +57,17 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
         location: profileData.location || "",
         about: profileData.bio || "",
         skills: profileData.trainerProfile?.skills || profileData.skills || [],
-        experience: profileData.experience || [],
+        experience: (profileData.experience || []).map(exp => ({
+          ...exp,
+          startYear: exp.startDate ? new Date(exp.startDate).getFullYear().toString() : exp.startYear || "",
+          endYear: exp.isCurrent ? "" : (exp.endDate ? new Date(exp.endDate).getFullYear().toString() : exp.endYear || "")
+        })),
+        education: (profileData.education || []).map(edu => ({
+          ...edu,
+          field: edu.fieldOfStudy || edu.field || "",
+          startYear: edu.startDate ? new Date(edu.startDate).getFullYear().toString() : edu.startYear || "",
+          endYear: edu.endDate ? new Date(edu.endDate).getFullYear().toString() : edu.endYear || ""
+        })),
         avatar: profileData.profilePicture || profileData.avatar || DEFAULT_PROFILE_IMAGE,
         coverImage: profileData.coverImage || ""
       });
@@ -60,7 +79,7 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
       setCoverFile(null);
       setError(null);
     }
-  }, [profileData, isOpen]);
+  }, [isOpen, profileData]);
 
   if (!isOpen) return null;
 
@@ -206,7 +225,23 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
         profilePicture: profilePictureUrl,
         coverImage: coverImageUrl,
         skills: formData.skills || [],
-        experience: formData.experience || []
+        experience: (formData.experience || []).map(exp => ({
+          title: exp.title || "",
+          company: exp.company || "",
+          location: exp.location || "",
+          startYear: exp.startYear || "",
+          endYear: exp.isCurrent ? "" : (exp.endYear || ""),
+          isCurrent: exp.isCurrent || false,
+          description: exp.description || ""
+        })),
+        education: (formData.education || []).map(edu => ({
+          school: edu.school || "",
+          degree: edu.degree || "",
+          fieldOfStudy: edu.field || edu.fieldOfStudy || "",
+          startYear: edu.startYear || "",
+          endYear: edu.endYear || "",
+          description: edu.description || ""
+        }))
       };
 
       console.log('Sending update data:', updateData); // Debug log
@@ -230,7 +265,8 @@ export default function EditProfileModal({ isOpen, onClose, userType, profileDat
           avatar: profilePictureUrl,
           coverImage: coverImageUrl,
           skills: formData.skills,
-          experience: formData.experience
+          experience: response.data.experience || formData.experience,
+          education: response.data.education || formData.education
         };
         
         console.log('Updated data being sent to onSave:', updatedData); // Debug log

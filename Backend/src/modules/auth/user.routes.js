@@ -81,37 +81,51 @@ router.put("/profile", authMiddleware(), async (req, res) => {
             });
         }
 
-        // Update user basic info
-        const updatedUser = await client.user.update({
-            where: { id: userId },
-            data: {
-                firstName,
-                lastName,
-                profilePicture,
-                coverImage,
-                bio,
-                headline,
-                location
-            }
-        });
+        // Helper function to convert year to date
+        const yearToDate = (year, isEndDate = false) => {
+            if (!year) return null;
+            const yearNum = parseInt(year);
+            if (isNaN(yearNum)) return null;
+            // Use January 1st for start dates, December 31st for end dates
+            return isEndDate ? new Date(yearNum, 11, 31) : new Date(yearNum, 0, 1);
+        };
+
+        // Update user basic info - only update fields that are provided
+        const userUpdateData = {};
+        if (firstName !== undefined) userUpdateData.firstName = firstName;
+        if (lastName !== undefined) userUpdateData.lastName = lastName;
+        if (profilePicture !== undefined) userUpdateData.profilePicture = profilePicture;
+        if (coverImage !== undefined) userUpdateData.coverImage = coverImage;
+        if (bio !== undefined) userUpdateData.bio = bio;
+        if (headline !== undefined) userUpdateData.headline = headline;
+        if (location !== undefined) userUpdateData.location = location;
+
+        // Update user if there are changes
+        if (Object.keys(userUpdateData).length > 0) {
+            await client.user.update({
+                where: { id: userId },
+                data: userUpdateData
+            });
+        }
 
         // Handle experience updates
-        if (experience && Array.isArray(experience)) {
+        if (experience !== undefined && Array.isArray(experience)) {
             // Delete existing experience
             await client.experience.deleteMany({
                 where: { userId }
             });
 
-            // Create new experience entries
-            if (experience.length > 0) {
+            // Create new experience entries - filter out empty entries
+            const validExperience = experience.filter(exp => exp.title || exp.company);
+            if (validExperience.length > 0) {
                 await client.experience.createMany({
-                    data: experience.map(exp => ({
+                    data: validExperience.map(exp => ({
                         userId,
-                        title: exp.title,
-                        company: exp.company,
+                        title: exp.title || '',
+                        company: exp.company || '',
                         location: exp.location || null,
-                        startDate: exp.startDate ? new Date(exp.startDate) : null,
-                        endDate: exp.endDate ? new Date(exp.endDate) : null,
+                        startDate: exp.startDate ? new Date(exp.startDate) : (exp.startYear ? yearToDate(exp.startYear) : null),
+                        endDate: exp.isCurrent ? null : (exp.endDate ? new Date(exp.endDate) : (exp.endYear ? yearToDate(exp.endYear, true) : null)),
                         isCurrent: exp.isCurrent || false,
                         description: exp.description || null
                     }))
@@ -120,22 +134,23 @@ router.put("/profile", authMiddleware(), async (req, res) => {
         }
 
         // Handle education updates
-        if (education && Array.isArray(education)) {
+        if (education !== undefined && Array.isArray(education)) {
             // Delete existing education
             await client.education.deleteMany({
                 where: { userId }
             });
 
-            // Create new education entries
-            if (education.length > 0) {
+            // Create new education entries - filter out empty entries
+            const validEducation = education.filter(edu => edu.school || edu.degree);
+            if (validEducation.length > 0) {
                 await client.education.createMany({
-                    data: education.map(edu => ({
+                    data: validEducation.map(edu => ({
                         userId,
-                        school: edu.school,
+                        school: edu.school || '',
                         degree: edu.degree || null,
-                        fieldOfStudy: edu.fieldOfStudy || null,
-                        startDate: edu.startDate ? new Date(edu.startDate) : null,
-                        endDate: edu.endDate ? new Date(edu.endDate) : null,
+                        fieldOfStudy: edu.fieldOfStudy || edu.field || null,
+                        startDate: edu.startDate ? new Date(edu.startDate) : (edu.startYear ? yearToDate(edu.startYear) : null),
+                        endDate: edu.endDate ? new Date(edu.endDate) : (edu.endYear ? yearToDate(edu.endYear, true) : null),
                         description: edu.description || null
                     }))
                 });
@@ -144,16 +159,31 @@ router.put("/profile", authMiddleware(), async (req, res) => {
 
         // Handle role specific profile updates
         if (req.user.role === "TRAINER") {
+            const trainerUpdateData = {};
+            if (bio !== undefined) trainerUpdateData.bio = bio;
+            if (location !== undefined) trainerUpdateData.location = location;
+            if (skills !== undefined) trainerUpdateData.skills = Array.isArray(skills) ? skills : [];
+
             await client.trainerProfile.upsert({
                 where: { userId },
-                update: { bio, location, skills: skills || [] },
-                create: { userId, bio, location, skills: skills || [], experience: 0 }
+                update: trainerUpdateData,
+                create: { 
+                    userId, 
+                    bio: bio || null, 
+                    location: location || null, 
+                    skills: Array.isArray(skills) ? skills : [], 
+                    experience: 0 
+                }
             });
         } else if (req.user.role === "STUDENT") {
+            const studentUpdateData = {};
+            if (bio !== undefined) studentUpdateData.bio = bio;
+            if (location !== undefined) studentUpdateData.location = location;
+
             await client.studentProfile.upsert({
                 where: { userId },
-                update: { bio, location },
-                create: { userId, bio, location }
+                update: studentUpdateData,
+                create: { userId, bio: bio || null, location: location || null }
             });
         } else if (req.user.role === "INSTITUTION") {
             await client.institutionProfile.upsert({
@@ -192,6 +222,14 @@ router.put("/profile", authMiddleware(), async (req, res) => {
                 success: false, 
                 message: "User account not found. Please log out and create a new account.",
                 code: "USER_NOT_FOUND"
+            });
+        }
+        
+        if (error.code === 'P2002') {
+            return res.status(400).json({ 
+                success: false, 
+                message: "A profile with this information already exists.",
+                code: "DUPLICATE_ENTRY"
             });
         }
         

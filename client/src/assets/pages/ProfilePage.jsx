@@ -31,7 +31,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
   const navigate = useNavigate();
   const { username } = useParams(); // Changed from id to username
   const location = useLocation();
-  const { user: authUser, updateProfile } = useAuth();
+  const { user: authUser, updateProfile, syncProfileData } = useAuth();
   const config =
     DASHBOARD_CONFIG[userType] || DASHBOARD_CONFIG[USER_TYPES.STUDENT];
   const profile = config?.leftSidebar?.profile || { avatar: "", name: "User" };
@@ -583,6 +583,8 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
                 (updatedUser.trainerProfile?.skills !== undefined ? updatedUser.trainerProfile.skills : prev.skills),
         // Handle experience
         experience: updatedUser.experience !== undefined ? updatedUser.experience : prev.experience,
+        // Handle education
+        education: updatedUser.education !== undefined ? updatedUser.education : prev.education,
         // Ensure trainerProfile is properly merged if it exists
         trainerProfile: updatedUser.trainerProfile ? {
           ...prev.trainerProfile,
@@ -616,16 +618,15 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
       }),
     );
 
-    if (isOwnProfile && updateProfile) {
-      updateProfile(updatedUser);
+    // Immediately sync AuthContext with updated data (no API call)
+    if (isOwnProfile && syncProfileData) {
+      syncProfileData(updatedUser);
     }
 
     setSaveSuccess(true);
     
-    // Reload profile data from server after a brief delay to ensure backend has processed the update
-    setTimeout(() => {
-      loadProfile();
-    }, 500); // Increased delay to ensure backend consistency
+    // Note: We don't call loadProfile() here because we've already updated the state
+    // The immediate state update is sufficient and prevents overwriting with stale server data
   };
 
   // Create Post Handlers

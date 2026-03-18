@@ -16,6 +16,7 @@ const AUTH_ACTIONS = {
   UPDATE_PROFILE_START: "UPDATE_PROFILE_START",
   UPDATE_PROFILE_SUCCESS: "UPDATE_PROFILE_SUCCESS",
   UPDATE_PROFILE_FAILURE: "UPDATE_PROFILE_FAILURE",
+  SYNC_PROFILE_DATA: "SYNC_PROFILE_DATA",
 };
 
 // ================= SAFE LOCALSTORAGE HYDRATION =================
@@ -120,6 +121,18 @@ const authReducer = (state, action) => {
         error: action.payload,
       };
 
+    case AUTH_ACTIONS.SYNC_PROFILE_DATA:
+      // Directly sync profile data without API call (used after profile update)
+      const syncedUser = {
+        ...state.user,
+        ...action.payload,
+      };
+      localStorage.setItem("user", JSON.stringify(syncedUser));
+      return {
+        ...state,
+        user: syncedUser,
+      };
+
     default:
       return state;
   }
@@ -216,6 +229,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Sync profile data without making API call (for immediate UI updates)
+  const syncProfileData = (profileData) => {
+    dispatch({
+      type: AUTH_ACTIONS.SYNC_PROFILE_DATA,
+      payload: profileData,
+    });
+  };
+
 
   return (
     <AuthContext.Provider
@@ -226,6 +247,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         clearError,
         updateProfile,
+        syncProfileData,
       }}
     >
       {children}
