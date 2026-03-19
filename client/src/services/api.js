@@ -1,5 +1,3 @@
-// Use proxy in dev (Vite proxies /api to backend), or explicit URL in production
-// Fixed: Added parentheses to ensure correct operator precedence
 const API_BASE = import.meta.env.VITE_API_URL
   ? import.meta.env.VITE_API_URL + "/api/v1"
   : import.meta.env.DEV
@@ -7,8 +5,6 @@ const API_BASE = import.meta.env.VITE_API_URL
     : "http://localhost:5000/api/v1";
 
 class ApiService {
-  /* ================= CORE REQUEST WITH RETRY ================= */
-
   static async request(endpoint, options = {}, retryCount = 0) {
     const token = localStorage.getItem("token");
 
