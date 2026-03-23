@@ -1,17 +1,9 @@
 import { DASHBOARD_CONFIG, USER_TYPES } from "../../config/dashboardConfig";
 import { useTheme } from "../../context/ThemeContext";
 import { useNavigate } from "react-router-dom";
-import { TrendingUp, ExternalLink, Zap } from "lucide-react";
+import { ExternalLink, Briefcase, MapPin, Users, Clock } from "lucide-react";
 import ApiService from "../../services/api";
-import { useState, useEffect } from "react";
-
-const TRENDING_TOPICS = [
-  { tag: "#AISkills", posts: "2.4K posts", hot: true },
-  { tag: "#ReactJS", posts: "1.8K posts", hot: false },
-  { tag: "#DataScience", posts: "3.1K posts", hot: true },
-  { tag: "#CloudComputing", posts: "956 posts", hot: false },
-  { tag: "#MachineLearning", posts: "4.2K posts", hot: true },
-];
+import { useState, useEffect, useCallback } from "react";
 
 export default function RightSidebar({ userType = USER_TYPES.STUDENT }) {
   const config = DASHBOARD_CONFIG[userType];
@@ -20,6 +12,9 @@ export default function RightSidebar({ userType = USER_TYPES.STUDENT }) {
   const navigate = useNavigate();
   const [suggestedTrainers, setSuggestedTrainers] = useState([]);
   const [loadingTrainers, setLoadingTrainers] = useState(false);
+  const [topRequirements, setTopRequirements] = useState([]);
+  const [loadingRequirements, setLoadingRequirements] = useState(false);
+  const [timeTick, setTimeTick] = useState(0); // Used to force re-render for time updates
 
   useEffect(() => {
     const loadSuggestedTrainers = async () => {
@@ -46,47 +41,150 @@ export default function RightSidebar({ userType = USER_TYPES.STUDENT }) {
     }
   }, [userType]);
 
+  // Load top requirements - fetch more items
+  const loadTopRequirements = async () => {
+    setLoadingRequirements(true);
+    try {
+      const res = await ApiService.getTopRequirements(10);
+      if (res?.success) {
+        setTopRequirements(res.data || []);
+      }
+    } catch {
+      // Silent fail
+    } finally {
+      setLoadingRequirements(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTopRequirements();
+  }, []);
+
+  // Update relative time and refresh data every minute (to remove expired requirements)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeTick(prev => prev + 1);
+      loadTopRequirements(); // Re-fetch to filter out expired requirements
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Listen for refresh event when a post is deleted
+  useEffect(() => {
+    const handleRefreshRequirements = () => {
+      loadTopRequirements();
+    };
+
+    window.addEventListener("refreshTopRequirements", handleRefreshRequirements);
+    return () => {
+      window.removeEventListener("refreshTopRequirements", handleRefreshRequirements);
+    };
+  }, []);
+
   return (
     <div className="space-y-3">
-      {/* Insights Card */}
+      {/* Top Requirements Card */}
       <div className={`${theme.cardBg} rounded-xl shadow-lg border ${theme.cardBorder} overflow-hidden`}>
-        <div className={`px-4 py-3 border-b ${theme.divider} flex items-center gap-2`}>
-          <Zap size={15} className={theme.accentColor} />
-          <h3 className={`font-bold text-sm ${theme.textPrimary}`}>
-            {sidebarConfig.title}
-          </h3>
+        <div className={`px-4 py-3 border-b ${theme.divider} flex items-center justify-between`}>
+          <div className="flex items-center gap-2">
+            <Briefcase size={15} className="text-blue-500" />
+            <h3 className={`font-bold text-sm ${theme.textPrimary}`}>
+              Top Requirements
+            </h3>
+          </div>
+          <button className={`text-xs ${theme.accentColor} hover:underline flex items-center gap-1`}>
+            See all <ExternalLink size={10} />
+          </button>
         </div>
-        <ul className="p-3 space-y-2">
-          {sidebarConfig.items.map((item, index) => (
-            <li
-              key={index}
-              className={`${theme.hoverBg} ${theme.hoverText} cursor-pointer transition-all duration-200 hover:translate-x-1 flex items-center gap-2.5 px-2.5 py-2 rounded-lg ${theme.textSecondary} text-sm`}
-            >
-              {item}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Trending Topics */}
-      <div className={`${theme.cardBg} rounded-xl shadow-lg border ${theme.cardBorder} overflow-hidden`}>
-        <div className={`px-4 py-3 border-b ${theme.divider} flex items-center gap-2`}>
-          <TrendingUp size={15} className="text-orange-500" />
-          <h3 className={`font-bold text-sm ${theme.textPrimary}`}>Trending Topics</h3>
-        </div>
-        <ul className="p-3 space-y-1">
-          {TRENDING_TOPICS.map((topic) => (
-            <li key={topic.tag}>
-              <button className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg ${theme.hoverBg} transition-all group`}>
-                <div className="flex items-center gap-2">
-                  {topic.hot && <span className="text-xs">🔥</span>}
-                  <span className={`text-sm font-medium ${theme.accentColor}`}>{topic.tag}</span>
+        <div className="p-3 space-y-3">
+          {loadingRequirements ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex items-center gap-2.5 animate-pulse">
+                  <div className={`w-10 h-10 rounded-lg ${theme.isDarkMode ? "bg-neutral-700" : "bg-gray-200"}`}></div>
+                  <div className="flex-1 space-y-1.5">
+                    <div className={`h-2.5 rounded ${theme.isDarkMode ? "bg-neutral-700" : "bg-gray-200"} w-24`}></div>
+                    <div className={`h-2 rounded ${theme.isDarkMode ? "bg-neutral-700" : "bg-gray-200"} w-16`}></div>
+                  </div>
                 </div>
-                <span className={`text-xs ${theme.textMuted}`}>{topic.posts}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+              ))}
+            </div>
+          ) : topRequirements.length > 0 ? (
+            topRequirements.map((req, index) => (
+              <div
+                key={req.id || index}
+                className={`p-2.5 rounded-lg ${theme.hoverBg} cursor-pointer transition-all hover:shadow-sm border ${theme.cardBorder}`}
+                onClick={() => navigate(`/institute/profile/${req.author?.username}`)}
+              >
+                <div className="flex items-start gap-2">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0 overflow-hidden">
+                    {req.author?.profilePicture ? (
+                      <img 
+                        src={req.author.profilePicture} 
+                        alt="" 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.parentElement.innerText = req.author?.institutionProfile?.name?.charAt(0) || req.author?.firstName?.charAt(0) || "I";
+                        }}
+                      />
+                    ) : (
+                      req.author?.institutionProfile?.name?.charAt(0) || req.author?.firstName?.charAt(0) || "I"
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium ${theme.textPrimary} truncate line-clamp-2`}>
+                      {req.content?.substring(0, 50) || "Tutor Required"}
+                      {req.content?.length > 50 && "..."}
+                    </p>
+                    <p className={`text-xs ${theme.textMuted} truncate`}>
+                      {req.author?.institutionProfile?.name || `${req.author?.firstName || ""} ${req.author?.lastName || ""}`.trim() || "Institution"}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {req.positions > 1 && (
+                        <span className={`text-xs ${theme.textMuted} flex items-center gap-0.5`}>
+                          <Users size={10} />
+                          {req.positions}
+                        </span>
+                      )}
+                      {req.location && (
+                        <span className={`text-xs ${theme.textMuted} flex items-center gap-0.5`}>
+                          <MapPin size={10} />
+                          {req.location}
+                        </span>
+                      )}
+                      {req.createdAt && (
+                        <span className={`text-xs ${theme.textMuted} flex items-center gap-0.5`}>
+                          <Clock size={10} />
+                          {(() => {
+                            // Include timeTick to force re-render every minute
+                            const _tick = timeTick;
+                            const date = new Date(req.createdAt);
+                            const now = new Date();
+                            const diffMinutes = Math.floor((now - date) / (1000 * 60));
+                            const diffHours = Math.floor(diffMinutes / 60);
+                            if (diffMinutes < 1) return "Just now";
+                            if (diffMinutes < 60) return `${diffMinutes}m ago`;
+                            if (diffHours < 24) return `${diffHours}h ago`;
+                            const diffDays = Math.floor(diffHours / 24);
+                            if (diffDays < 7) return `${diffDays}d ago`;
+                            return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                          })()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-4">
+              <Briefcase className={`w-8 h-8 mx-auto mb-2 ${theme.textMuted}`} />
+              <p className={`text-sm ${theme.textMuted}`}>No requirements yet</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Suggested Trainers (for students) */}

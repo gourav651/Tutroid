@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Heart,
   MessageCircle,
   Share2,
-  Bookmark,
   MoreHorizontal,
   ThumbsUp,
   User,
@@ -53,6 +52,19 @@ export default function PostCard({
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [shareMenuPosition, setShareMenuPosition] = useState({ bottom: 0, left: 0 });
+  const shareMenuRef = useRef(null);
+
+  // Update share menu position when it opens
+  useEffect(() => {
+    if (showShareMenu && shareMenuRef.current) {
+      const rect = shareMenuRef.current.getBoundingClientRect();
+      setShareMenuPosition({
+        bottom: window.innerHeight - rect.top + 8,
+        left: rect.left + rect.width / 2
+      });
+    }
+  }, [showShareMenu]);
 
   const handleReviewSubmit = async (rating, review) => {
     try {
@@ -97,8 +109,10 @@ export default function PostCard({
   const handleShare = async (method) => {
     // Create a URL that points to the author's profile with the specific post ID
     const authorRole = post.author?.role?.toLowerCase() || 'student';
+    // Map role to route path (institution -> institute)
+    const routePath = authorRole === 'institution' ? 'institute' : authorRole;
     const authorUsername = post.author?.username || post.author?.id;
-    const profileUrl = `${window.location.origin}/${authorRole}/profile/${authorUsername}?post=${post.id}`;
+    const profileUrl = `${window.location.origin}/${routePath}/profile/${authorUsername}?post=${post.id}`;
     const shareText = `Check out this post by ${authorName}: ${post.content?.substring(0, 100)}${post.content?.length > 100 ? '...' : ''}`;
 
     try {
@@ -297,13 +311,6 @@ export default function PostCard({
                   
                   <div className={`absolute right-0 mt-1 w-40 sm:w-44 ${theme.cardBg} rounded-xl shadow-xl border ${theme.cardBorder} overflow-hidden z-20`}>
                     <button
-                      onClick={() => { onEdit?.(post); setShowDropdown(false); }}
-                      className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 text-left flex items-center gap-2 sm:gap-2.5 text-xs sm:text-sm ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-colors`}
-                    >
-                      <Edit size={14} />
-                      Edit Post
-                    </button>
-                    <button
                       onClick={() => {
                         if (window.confirm("Are you sure you want to delete this post?")) {
                           onDelete?.(post.id);
@@ -463,7 +470,7 @@ export default function PostCard({
             <span className="hidden sm:inline">Rate</span>
           </button>
 
-          <div className="relative">
+          <div className="relative" ref={shareMenuRef}>
             <button
               onClick={() => setShowShareMenu(!showShareMenu)}
               className={`flex items-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
@@ -481,12 +488,29 @@ export default function PostCard({
               <>
                 {/* Backdrop */}
                 <div 
-                  className="fixed inset-0 z-30" 
+                  className="fixed inset-0 z-40" 
                   onClick={() => setShowShareMenu(false)}
                 />
                 
-                {/* Menu */}
-                <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-48 ${theme.cardBg} rounded-lg shadow-xl border ${theme.cardBorder} py-2 z-40`}>
+                {/* Menu - positioned fixed to avoid clipping */}
+                <div 
+                  className={`fixed z-50 w-48 ${theme.cardBg} rounded-lg shadow-xl border ${theme.cardBorder} py-2 max-h-60 overflow-y-auto`}
+                  style={{
+                    bottom: shareMenuPosition.bottom,
+                    left: shareMenuPosition.left,
+                    transform: 'translateX(-50%)'
+                  }}
+                >
+                  <button
+                    onClick={() => handleShare('copy')}
+                    className={`w-full px-4 py-2.5 text-left flex items-center gap-3 text-sm font-medium ${theme.textPrimary} ${theme.hoverBg} transition-colors border-b ${theme.cardBorder}`}
+                  >
+                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-blue-500">Copy Link</span>
+                  </button>
+
                   {navigator.share && (
                     <button
                       onClick={() => handleShare('native')}
@@ -496,16 +520,6 @@ export default function PostCard({
                       Share via...
                     </button>
                   )}
-                  
-                  <button
-                    onClick={() => handleShare('copy')}
-                    className={`w-full px-4 py-2 text-left flex items-center gap-3 text-xs sm:text-sm ${theme.textPrimary} ${theme.hoverBg} transition-colors`}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    Copy Link
-                  </button>
 
                   <div className={`h-px ${theme.cardBorder} my-1`} />
 
@@ -542,17 +556,6 @@ export default function PostCard({
               </>
             )}
           </div>
-
-          <button
-            onClick={onSave}
-            className={`flex items-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all group ${isSaved
-                ? "text-amber-500 bg-amber-500/10"
-                : `${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText}`
-              }`}
-          >
-            <Bookmark className={`w-3 sm:w-4 h-3 sm:h-4 group-hover:scale-110 transition-transform ${isSaved ? "fill-current" : ""}`} />
-            <span className="hidden sm:inline">Save</span>
-          </button>
         </div>
       </div>
 

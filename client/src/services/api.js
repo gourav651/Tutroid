@@ -142,6 +142,10 @@ class ApiService {
     return this.request(`/posts/my-posts${params ? `?${params}` : ""}`);
   }
 
+  static async getTopRequirements(limit = 5) {
+    return this.request(`/posts/top-requirements?limit=${limit}`);
+  }
+
   static async likePost(postId) {
     return this.request(`/posts/${postId}/review`, { method: "POST", body: JSON.stringify({ rating: 5 }) });
   }

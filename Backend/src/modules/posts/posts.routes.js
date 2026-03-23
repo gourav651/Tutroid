@@ -10,6 +10,7 @@ import {
   deleteReview,
   getPostReviews,
   getMyPosts,
+  getTopRequirements,
 } from "./posts.controller.js";
 
 import { validate } from "../../middleware/validate.middleware.js";
@@ -32,6 +33,9 @@ router.get(
 
 // Public routes
 router.get("/", validate(getPostsSchema, "query"), getPosts);
+
+// Get top requirements (must come BEFORE /:postId to avoid route conflict)
+router.get("/top-requirements", getTopRequirements);
 router.get("/:postId", getPostById);
 router.get("/:postId/reviews", getPostReviews);
 

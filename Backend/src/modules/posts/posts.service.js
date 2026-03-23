@@ -24,6 +24,15 @@ export const createPostService = async (postData) => {
       totalReviews: 0,
       shares: 0,
       isActive: true,
+      // Requirement post fields
+      isRequirement: postData.isRequirement || false,
+      ...(postData.isRequirement && {
+        positions: postData.positions || 1,
+        deadline: postData.deadline ? new Date(postData.deadline) : null,
+        requirements: postData.requirements ? JSON.stringify(postData.requirements) : null,
+        location: postData.location || null,
+        salary: postData.salary || null,
+      }),
     },
     // Return minimal data for faster response
     select: {
@@ -35,6 +44,12 @@ export const createPostService = async (postData) => {
       tags: true,
       createdAt: true,
       authorId: true,
+      isRequirement: true,
+      positions: true,
+      deadline: true,
+      requirements: true,
+      location: true,
+      salary: true,
     },
   });
 
@@ -45,7 +60,7 @@ export const createPostService = async (postData) => {
 
 export const getPostsService = async (filters = {}) => {
   const validatedFilters = getPostsSchema.parse(filters);
-  const { page, limit, sortBy, sortOrder, authorId, type } = validatedFilters;
+  const { page, limit, sortBy, sortOrder, authorId, type, isRequirement } = validatedFilters;
 
   const skip = (page - 1) * limit;
 
@@ -53,6 +68,7 @@ export const getPostsService = async (filters = {}) => {
     isActive: true,
     ...(authorId && { authorId }),
     ...(type && { type }),
+    ...(isRequirement !== undefined && { isRequirement }),
   };
 
   // Use parallel queries for better performance
@@ -71,6 +87,12 @@ export const getPostsService = async (filters = {}) => {
         shares: true,
         createdAt: true,
         updatedAt: true,
+        isRequirement: true,
+        positions: true,
+        deadline: true,
+        requirements: true,
+        location: true,
+        salary: true,
         author: {
           select: {
             id: true,
@@ -88,6 +110,7 @@ export const getPostsService = async (filters = {}) => {
             institutionProfile: {
               select: {
                 name: true,
+                location: true,
               },
             },
           },
@@ -258,11 +281,14 @@ export const deletePostService = async (postId, userId) => {
     where: { id: postId },
   });
 
+  console.log("Delete post check:", { postId, userId, authorId: existingPost?.authorId, userIdType: typeof userId, authorIdType: typeof existingPost?.authorId });
+
   if (!existingPost) {
     throw new Error("Post not found");
   }
 
-  if (existingPost.authorId !== userId) {
+  // Compare as strings to handle type mismatches
+  if (String(existingPost.authorId) !== String(userId)) {
     throw new Error("Not authorized to delete this post");
   }
 
@@ -446,5 +472,55 @@ export const getPostReviewsService = async (postId) => {
 
     return reviews;
   });
+};
+
+/* ================= GET TOP REQUIREMENTS ================= */
+
+export const getTopRequirementsService = async (limit = 5) => {
+  const requirements = await client.post.findMany({
+    where: {
+      isActive: true,
+      isRequirement: true,
+      OR: [
+        { deadline: null },
+        { deadline: { gte: new Date() } } // Only show requirements that haven't expired
+      ]
+    },
+    select: {
+      id: true,
+      content: true,
+      positions: true,
+      deadline: true,
+      requirements: true,
+      location: true,
+      salary: true,
+      createdAt: true,
+      author: {
+        select: {
+          id: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          profilePicture: true,
+          institutionProfile: {
+            select: {
+              name: true,
+              location: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: [
+      { createdAt: "desc" },
+    ],
+    take: limit,
+  });
+
+  // Parse requirements JSON string back to array
+  return requirements.map(req => ({
+    ...req,
+    requirements: req.requirements ? JSON.parse(req.requirements) : [],
+  }));
 };
 

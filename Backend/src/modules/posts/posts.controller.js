@@ -9,7 +9,9 @@ import {
   deleteReviewService,
   getPostReviewsService,
   getMyPostsService,
+  getTopRequirementsService,
 } from "./posts.service.js";
+import { cacheDel, cacheFlush } from "../../config/redis.js";
 
 // Create Post
 export const createPost = async (req, res) => {
@@ -29,6 +31,13 @@ export const createPost = async (req, res) => {
       imageUrl: req.body.imageUrl || null,
       videoUrl: req.body.videoUrl || null,
       tags: req.body.tags || [],
+      // Requirement post fields
+      isRequirement: req.body.isRequirement || false,
+      positions: req.body.positions,
+      deadline: req.body.deadline,
+      requirements: req.body.requirements,
+      location: req.body.location,
+      salary: req.body.salary,
     };
 
     const post = await createPostService(postData);
@@ -174,7 +183,11 @@ export const updatePost = async (req, res) => {
 // Delete
 export const deletePost = async (req, res) => {
   try {
+    console.log("Delete post request:", { postId: req.params.postId, userId: req.user.userId });
     await deletePostService(req.params.postId, req.user.userId);
+
+    // Clear relevant caches
+    await cacheFlush(); // Clear all cache to ensure posts, my-posts, and top-requirements are refreshed
 
     res.status(200).json({
       success: true,
@@ -303,6 +316,27 @@ export const getPostReviews = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || "Failed to retrieve reviews",
+    });
+  }
+};
+
+// Get Top Requirements
+export const getTopRequirements = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 5;
+    const requirements = await getTopRequirementsService(limit);
+
+    res.status(200).json({
+      success: true,
+      message: "Top requirements retrieved successfully",
+      data: requirements,
+    });
+  } catch (error) {
+    console.error("Get top requirements error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to retrieve top requirements",
     });
   }
 };

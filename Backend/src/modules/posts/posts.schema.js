@@ -7,6 +7,13 @@ export const createPostSchema = z.object({
   imageUrl: z.string().optional(),
   videoUrl: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  // Requirement post fields
+  isRequirement: z.boolean().optional(),
+  positions: z.number().int().positive().optional(),
+  deadline: z.string().datetime().optional(),
+  requirements: z.array(z.string()).optional(),
+  location: z.string().optional(),
+  salary: z.string().optional(),
 });
 
 // ================= UPDATE =================
@@ -20,6 +27,12 @@ export const updatePostSchema = z.object({
   imageUrl: z.string().url().optional(),
   videoUrl: z.string().url().optional(),
   tags: z.array(z.string()).optional(),
+  // Requirement post fields
+  positions: z.number().int().positive().optional(),
+  deadline: z.string().datetime().optional(),
+  requirements: z.array(z.string()).optional(),
+  location: z.string().optional(),
+  salary: z.string().optional(),
 });
 
 // ================= GET POSTS (QUERY) =================
@@ -29,5 +42,6 @@ export const getPostsSchema = z.object({
   sortBy: z.enum(["createdAt", "rating", "likes"]).default("createdAt"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
   authorId: z.string().uuid().optional(),
-  type: z.enum(["text", "image", "video", "article"]).optional(),
+  type: z.enum(["text", "image", "video", "article", "requirement"]).optional(),
+  isRequirement: z.coerce.boolean().optional(),
 });

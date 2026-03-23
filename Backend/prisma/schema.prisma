@@ -329,6 +329,14 @@ model Post {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
+  // Requirement post fields (for institutes posting tutor requirements)
+  isRequirement Boolean   @default(false)
+  positions     Int?      // Number of tutors needed
+  deadline      DateTime? // Application deadline
+  requirements  String?   // Required skills/qualifications (stored as JSON string)
+  location      String?   // Job location
+  salary        String?   // Salary/compensation info
+
   authorId    String
   author      User         @relation(fields: [authorId], references: [id])
   postReviews PostReview[]
@@ -340,6 +348,8 @@ model Post {
   @@index([averageRating])
   @@index([isActive, createdAt])
   @@index([authorId, isActive])
+  @@index([isRequirement])
+  @@index([isRequirement, createdAt])
 }
 
 model PostReview {

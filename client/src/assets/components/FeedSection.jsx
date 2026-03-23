@@ -21,9 +21,15 @@ import {
   Video,
   Loader2,
   Search,
+  Briefcase,
+  MapPin,
+  DollarSign,
+  Calendar,
+  Users,
 } from "lucide-react";
 import PostCard from "./PostCard";
 import PostDetailModal from "../../components/PostDetailModal";
+import RequirementCard from "../../components/RequirementCard";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const POSTS_PER_PAGE = 5;
@@ -46,6 +52,17 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  
+  // Requirement post states
+  const [isRequirement, setIsRequirement] = useState(false);
+  const [requirementFields, setRequirementFields] = useState({
+    positions: 1,
+    deadline: "",
+    requirements: [],
+    location: "",
+    salary: "",
+  });
+  const [newRequirement, setNewRequirement] = useState("");
 
   // Interaction states
   const [likedPosts, setLikedPosts] = useState(new Set());
@@ -112,6 +129,8 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
       const response = await ApiService.getPosts?.({
         page: pageNum,
         limit: POSTS_PER_PAGE,
+        sortBy: sortType === "top" ? "likes" : "createdAt",
+        sortOrder: "desc",
       });
 
       if (response?.success) {
@@ -327,6 +346,16 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
         postData.imageUrl = imageUrl;
       }
 
+      // Add requirement fields if this is a requirement post
+      if (isRequirement) {
+        postData.isRequirement = true;
+        postData.positions = requirementFields.positions;
+        postData.deadline = requirementFields.deadline || null;
+        postData.requirements = requirementFields.requirements;
+        postData.location = requirementFields.location || null;
+        postData.salary = requirementFields.salary || null;
+      }
+
       /* ========= CREATE POST ========= */
 
       const response = await ApiService.createPost(postData);
@@ -341,6 +370,15 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
       setSelectedImage(null);
       setImagePreview(null);
       setIsModalOpen(false);
+      setIsRequirement(false);
+      setRequirementFields({
+        positions: 1,
+        deadline: "",
+        requirements: [],
+        location: "",
+        salary: "",
+      });
+      setNewRequirement("");
 
       // Reset pagination and reload from first page
       setPosts([]);
@@ -389,29 +427,7 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
     setImagePreview(null);
   };
 
-  /* ================= SORT POSTS ================= */
-
-  const sortedPosts = [...posts].sort((a, b) => {
-    if (sortType === "top") {
-      // Sort by popularity: calculate engagement score
-      // Engagement = likes + (comments * 2) + (shares * 3) + (reviews * 1.5)
-      const getEngagementScore = (post) => {
-        const likes = post.likes || 0;
-        const comments = post.commentCount || 0;
-        const shares = post.shares || 0;
-        const reviews = post.totalReviews || 0;
-        const rating = post.averageRating || 0;
-        
-        // Weight: likes(1) + comments(2) + shares(3) + reviews(1.5) + rating bonus
-        return likes + (comments * 2) + (shares * 3) + (reviews * 1.5) + (rating * 10);
-      };
-      
-      return getEngagementScore(b) - getEngagementScore(a);
-    } else {
-      // Sort by creation date (newest first)
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    }
-  });
+  // Posts are already sorted by backend based on sortType
 
   // ================= POST INTERACTIONS =================
 
@@ -621,7 +637,7 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
             </div>
           ))}
         </div>
-      ) : sortedPosts.length === 0 ? (
+      ) : posts.length === 0 ? (
         <div className={`${theme.cardBg} rounded-xl border ${theme.cardBorder} p-12 text-center`}>
           <div className="text-4xl mb-3">📬</div>
           <p className={`font-semibold ${theme.textPrimary} mb-1`}>No posts yet</p>
@@ -629,34 +645,48 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
         </div>
       ) : (
         <>
-          {sortedPosts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              user={user}
-              isLiked={likedPosts.has(post.id)}
-              isSaved={savedPosts.has(post.id)}
-              showComments={showComments[post.id]}
-              commentInput={commentInputs[post.id] || ""}
-              onLike={() => handleLike(post.id)}
-              onSave={() => handleSave(post.id)}
-              onShare={() => handleShare(post.id)}
-              onComment={(text) =>
-                setCommentInputs((prev) => ({ ...prev, [post.id]: text }))
-              }
-              onSubmitComment={() => handleComment(post.id)}
-              onToggleComments={() =>
-                setShowComments((prev) => ({
-                  ...prev,
-                  [post.id]: !prev[post.id],
-                }))
-              }
-              onReviewUpdate={handleReviewUpdate}
-              onPostClick={(post) => {
-                setSelectedPost(post);
-                setIsPostDetailModalOpen(true);
-              }}
-            />
+          {posts.map((post) => (
+            post.isRequirement ? (
+              <RequirementCard
+                key={post.id}
+                requirement={{
+                  ...post,
+                  requirements: post.requirements ? (typeof post.requirements === 'string' ? JSON.parse(post.requirements) : post.requirements) : []
+                }}
+                onClick={(req) => {
+                  setSelectedPost(req);
+                  setIsPostDetailModalOpen(true);
+                }}
+              />
+            ) : (
+              <PostCard
+                key={post.id}
+                post={post}
+                user={user}
+                isLiked={likedPosts.has(post.id)}
+                isSaved={savedPosts.has(post.id)}
+                showComments={showComments[post.id]}
+                commentInput={commentInputs[post.id] || ""}
+                onLike={() => handleLike(post.id)}
+                onSave={() => handleSave(post.id)}
+                onShare={() => handleShare(post.id)}
+                onComment={(text) =>
+                  setCommentInputs((prev) => ({ ...prev, [post.id]: text }))
+                }
+                onSubmitComment={() => handleComment(post.id)}
+                onToggleComments={() =>
+                  setShowComments((prev) => ({
+                    ...prev,
+                    [post.id]: !prev[post.id],
+                  }))
+                }
+                onReviewUpdate={handleReviewUpdate}
+                onPostClick={(post) => {
+                  setSelectedPost(post);
+                  setIsPostDetailModalOpen(true);
+                }}
+              />
+            )
           ))}
 
           {/* Infinite Scroll Trigger */}
@@ -683,8 +713,8 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
       {/* ================= CREATE POST MODAL ================= */}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-start pt-16 z-50 px-4">
-          <div className={`${theme.cardBg} w-full max-w-xl rounded-2xl shadow-2xl border ${theme.cardBorder} overflow-hidden`}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 px-4 py-4 overflow-y-auto">
+          <div className={`${theme.cardBg} w-full max-w-xl rounded-2xl shadow-2xl border ${theme.cardBorder} overflow-hidden my-auto max-h-[90vh] flex flex-col`}>
             {/* Modal Header */}
             <div className={`flex justify-between items-center px-5 py-4 border-b ${theme.divider}`}>
               <h3 className={`font-bold text-lg ${theme.textPrimary}`}>Create Post</h3>
@@ -694,6 +724,15 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
                   setPostText("");
                   setSelectedImage(null);
                   setImagePreview(null);
+                  setIsRequirement(false);
+                  setRequirementFields({
+                    positions: 1,
+                    deadline: "",
+                    requirements: [],
+                    location: "",
+                    salary: "",
+                  });
+                  setNewRequirement("");
                 }}
                 className={`p-2 rounded-full ${theme.hoverBg} ${theme.textMuted} ${theme.hoverText} transition-colors`}
               >
@@ -718,13 +757,13 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
               </div>
             </div>
 
-            {/* Post Content */}
-            <div className="px-5 pb-3">
+            {/* Post Content - Scrollable area */}
+            <div className="px-5 pb-3 overflow-y-auto flex-1 max-h-[60vh]">
               <textarea
                 name="postText"
                 value={postText}
                 onChange={(e) => setPostText(e.target.value)}
-                rows="4"
+                rows="3"
                 className={`w-full border-none outline-none resize-none text-base ${theme.inputText} ${theme.inputPlaceholder} bg-transparent placeholder:${theme.textMuted}`}
                 placeholder="What do you want to talk about?"
               />
@@ -760,6 +799,162 @@ export default function FeedSection({ userType = USER_TYPES.STUDENT }) {
                       </button>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Requirement Post Toggle - Only for Institutions */}
+              {user?.role === "INSTITUTION" && (
+                <div className={`mt-3 p-2.5 sm:p-3 rounded-xl border ${theme.cardBorder} ${theme.hoverBg}`}>
+                  <label className="flex items-center gap-2 sm:gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isRequirement}
+                      onChange={(e) => setIsRequirement(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 flex-shrink-0"
+                    />
+                    <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 flex-shrink-0" />
+                    <span className={`font-medium text-sm ${theme.textPrimary} leading-tight`}>Post as a Requirement</span>
+                  </label>
+                  <p className={`text-xs ${theme.textMuted} mt-1 ml-6 sm:ml-8`}>
+                    Mark this as a tutor requirement. It will appear in "Top Requirements".
+                  </p>
+                </div>
+              )}
+
+              {/* Requirement Fields */}
+              {isRequirement && (
+                <div className={`mt-3 p-3 sm:p-4 rounded-xl border ${theme.cardBorder} space-y-2 sm:space-y-3`}>
+                  <h4 className={`font-semibold text-sm ${theme.textPrimary} flex items-center gap-2`}>
+                    <Briefcase className="w-4 h-4 text-blue-500" />
+                    Requirement Details
+                  </h4>
+                  
+                  {/* Positions & Deadline - Grid layout for mobile */}
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    {/* Positions */}
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <label className={`text-xs ${theme.textMuted} block truncate`}>Tutors Needed</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={requirementFields.positions}
+                          onChange={(e) => setRequirementFields({...requirementFields, positions: parseInt(e.target.value) || 1})}
+                          className={`w-full mt-0.5 px-2 py-1.5 text-sm ${theme.inputBg} border ${theme.inputBorder} rounded-lg ${theme.inputText} focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Deadline */}
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <label className={`text-xs ${theme.textMuted} block truncate`}>Deadline</label>
+                        <input
+                          type="date"
+                          value={requirementFields.deadline}
+                          onChange={(e) => setRequirementFields({...requirementFields, deadline: e.target.value})}
+                          className={`w-full mt-0.5 px-2 py-1.5 text-sm ${theme.inputBg} border ${theme.inputBorder} rounded-lg ${theme.inputText} focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Location */}
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <label className={`text-xs ${theme.textMuted}`}>Location</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Mumbai, Remote"
+                        value={requirementFields.location}
+                        onChange={(e) => setRequirementFields({...requirementFields, location: e.target.value})}
+                        className={`w-full mt-0.5 px-2 py-1.5 text-sm ${theme.inputBg} border ${theme.inputBorder} rounded-lg ${theme.inputText} focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Salary */}
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <label className={`text-xs ${theme.textMuted}`}>Salary</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., ₹30,000/month"
+                        value={requirementFields.salary}
+                        onChange={(e) => setRequirementFields({...requirementFields, salary: e.target.value})}
+                        className={`w-full mt-0.5 px-2 py-1.5 text-sm ${theme.inputBg} border ${theme.inputBorder} rounded-lg ${theme.inputText} focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Required Skills */}
+                  <div>
+                    <label className={`text-xs ${theme.textMuted} flex items-center gap-1 mb-1`}>
+                      <FileText className="w-3 h-3" />
+                      Skills Required
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Add skill & press Enter"
+                        value={newRequirement}
+                        onChange={(e) => setNewRequirement(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter" && newRequirement.trim()) {
+                            e.preventDefault();
+                            setRequirementFields({
+                              ...requirementFields,
+                              requirements: [...requirementFields.requirements, newRequirement.trim()]
+                            });
+                            setNewRequirement("");
+                          }
+                        }}
+                        className={`flex-1 px-2 py-1.5 text-sm ${theme.inputBg} border ${theme.inputBorder} rounded-lg ${theme.inputText} focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                      />
+                      <button
+                        onClick={() => {
+                          if (newRequirement.trim()) {
+                            setRequirementFields({
+                              ...requirementFields,
+                              requirements: [...requirementFields.requirements, newRequirement.trim()]
+                            });
+                            setNewRequirement("");
+                          }
+                        }}
+                        className="px-2.5 py-1.5 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+                      >
+                        Add
+                      </button>
+                    </div>
+                    {/* Skills Tags */}
+                    {requirementFields.requirements.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {requirementFields.requirements.map((skill, index) => (
+                          <span
+                            key={index}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs ${theme.isDarkMode ? "bg-blue-900/30 text-blue-300" : "bg-blue-100 text-blue-700"} rounded-full`}
+                          >
+                            {skill}
+                            <button
+                              onClick={() => {
+                                setRequirementFields({
+                                  ...requirementFields,
+                                  requirements: requirementFields.requirements.filter((_, i) => i !== index)
+                                });
+                              }}
+                              className="hover:text-red-500"
+                            >
+                              <X size={10} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

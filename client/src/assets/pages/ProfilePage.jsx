@@ -350,8 +350,23 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
     }
   }, [saveSuccess]);
 
-  const handleDeletePost = (postId) => {
-    setPosts(posts.filter((post) => post.id !== postId));
+  const handleDeletePost = async (postId) => {
+    try {
+      console.log("Deleting post:", postId);
+      const response = await ApiService.deletePost(postId);
+      console.log("Delete response:", response);
+      if (response.success) {
+        setPosts(posts.filter((post) => post.id !== postId));
+        // Dispatch event to refresh top requirements in sidebar
+        window.dispatchEvent(new CustomEvent("refreshTopRequirements"));
+        alert("Post deleted successfully!");
+      } else {
+        alert(response.message || "Failed to delete post. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      alert(error.message || "Failed to delete post. Please try again.");
+    }
   };
 
   const handleEditPost = (post) => {
@@ -1351,30 +1366,7 @@ export default function ProfilePage({ userType = USER_TYPES.STUDENT }) {
               </div>
             )}
 
-            {isInstitute && (
-              <div
-                className={`${theme.cardBg} rounded-xl shadow-lg p-5 border ${theme.cardBorder} transition-all duration-300`}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className={`text-lg font-semibold ${theme.textPrimary}`}>
-                    Training Programs
-                  </h2>
-                </div>
 
-                {/* Coming Soon Message */}
-                <div className="py-12 text-center">
-                  <div className={`w-16 h-16 rounded-full ${theme.accentBg}/10 flex items-center justify-center mx-auto mb-4`}>
-                    <Briefcase className={`w-8 h-8 ${theme.accentColor}`} />
-                  </div>
-                  <h3 className={`text-lg font-semibold ${theme.textPrimary} mb-2`}>
-                    Coming Soon
-                  </h3>
-                  <p className={`text-sm ${theme.textMuted} max-w-sm mx-auto`}>
-                    Training programs feature will be available soon. Stay tuned!
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* Education - Only for Student & Trainer */}
             {!isInstitute && (data.education || []).length > 0 && (
