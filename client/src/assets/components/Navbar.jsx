@@ -26,6 +26,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import TopRequirementsPanel from "./TopRequirementsPanel";
 import { DASHBOARD_CONFIG, USER_TYPES } from "../../config/dashboardConfig";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
@@ -65,6 +66,7 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
   const [showMessaging, setShowMessaging] = useState(false);
   const [messagingUserId, setMessagingUserId] = useState(null);
   const [showDiscovery, setShowDiscovery] = useState(false);
+  const [showTopRequirements, setShowTopRequirements] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -305,7 +307,7 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
             {/* Notification Dropdown */}
             {showNotifications && (
               <div
-                className={`absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] ${theme.cardBg} rounded-xl shadow-2xl border ${theme.cardBorder} z-50 max-h-125 overflow-hidden flex flex-col animate-slideDown`}
+                className={`fixed sm:absolute inset-x-4 sm:inset-x-auto sm:right-0 top-16 sm:top-auto sm:mt-2 w-auto sm:w-96 ${theme.cardBg} rounded-xl shadow-2xl border ${theme.cardBorder} z-50 max-h-[70vh] sm:max-h-125 overflow-hidden flex flex-col animate-slideDown`}
                 style={{
                   animation: "slideDown 0.2s ease-out",
                 }}
@@ -689,6 +691,18 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
                   <span className="font-medium">Home</span>
                 </button>
 
+                {/* Top Requirements Button - Mobile Only */}
+                <button
+                  onClick={() => {
+                    setShowTopRequirements(true);
+                    setShowMobileMenu(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${theme.textSecondary} ${theme.hoverBg} ${theme.hoverText} transition-all duration-200`}
+                >
+                  <Briefcase size={20} />
+                  <span className="font-medium">Top Requirements</span>
+                </button>
+
                 {/* My Reviews Button - Only for Trainers */}
                 {userType === USER_TYPES.TRAINER && (
                   <button
@@ -789,6 +803,10 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
       <DiscoveryPanel
         isOpen={showDiscovery}
         onClose={() => setShowDiscovery(false)}
+      />
+      <TopRequirementsPanel
+        isOpen={showTopRequirements}
+        onClose={() => setShowTopRequirements(false)}
       />
     </header>
   );
