@@ -30,25 +30,20 @@ export class ReputationService {
         throw new Error('Trainer not found');
       }
 
-      // Calculate institution rating (60% weight)
       const institutionReviews = trainer.reviews.filter(r => r.reviewer.role === 'INSTITUTION');
       const institutionRating = institutionReviews.length > 0
         ? institutionReviews.reduce((acc, r) => acc + r.rating, 0) / institutionReviews.length
         : 0;
 
-      // Calculate material rating (40% weight)
       const materialRating = trainer.materialRatings.length > 0
         ? trainer.materialRatings.reduce((acc, r) => acc + r.rating, 0) / trainer.materialRatings.length
         : 0;
 
-      // Apply reputation formula
       const rawScore = (0.6 * institutionRating) + (0.4 * materialRating);
 
-      // Apply Bayesian weighting to prevent manipulation
       const totalReviews = institutionReviews.length + trainer.materialRatings.length;
       const bayesianScore = this.applyBayesianWeighting(rawScore, totalReviews);
 
-      // Update trainer's reputation score
       await prisma.trainerProfile.update({
         where: { id: trainerId },
         data: { 
@@ -57,10 +52,8 @@ export class ReputationService {
         }
       });
 
-      // Update completion rate
       await this.updateCompletionRate(trainerId);
 
-      // Check for new badges
       await this.checkAndAwardBadges(trainerId, bayesianScore, trainer._count.requests);
 
       return bayesianScore;

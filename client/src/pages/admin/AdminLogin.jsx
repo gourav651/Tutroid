@@ -493,20 +493,20 @@ const AdminLogin = () => {
 
           {/* Signup Form - Step 2: OTP Verification */}
           {signupStep === "otp" && (
-            <form onSubmit={handleVerifySignupOTP} className="space-y-6">
+            <form onSubmit={handleVerifySignupOTP} className="space-y-4 sm:space-y-6">
               <div>
                 <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>
                   Enter OTP
                 </label>
                 <div className="relative">
-                  <Shield className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme.textMuted}`} />
+                  <Shield className={`absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 ${theme.textMuted}`} />
                   <input
                     type="text"
                     value={signupOtp}
                     onChange={(e) => setSignupOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     placeholder="000000"
                     maxLength={6}
-                    className={`w-full pl-10 pr-4 py-3 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-2xl tracking-widest`}
+                    className={`w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-xl sm:text-2xl tracking-wider sm:tracking-widest`}
                     required
                   />
                 </div>
@@ -518,16 +518,16 @@ const AdminLogin = () => {
               <button
                 type="submit"
                 disabled={loading || signupOtp.length !== 6}
-                className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-2.5 sm:py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
               >
                 {loading ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     Verifying...
                   </>
                 ) : (
                   <>
-                    <Shield className="w-5 h-5" />
+                    <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
                     Verify & Create Account
                   </>
                 )}
@@ -538,9 +538,9 @@ const AdminLogin = () => {
                   type="button"
                   onClick={handleResendSignupOTP}
                   disabled={signupResendTimer > 0 || loading}
-                  className={`text-sm ${signupResendTimer > 0 ? theme.textMuted : "text-blue-600 hover:text-blue-700"} transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2 mx-auto`}
+                  className={`text-xs sm:text-sm ${signupResendTimer > 0 ? theme.textMuted : "text-blue-600 hover:text-blue-700"} transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2 mx-auto`}
                 >
-                  <RefreshCw className={`w-4 h-4 ${loading && "animate-spin"}`} />
+                  <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${loading && "animate-spin"}`} />
                   {signupResendTimer > 0 ? `Resend OTP in ${signupResendTimer}s` : "Resend OTP"}
                 </button>
               </div>
@@ -667,20 +667,20 @@ const AdminLogin = () => {
 
           {/* Step 2: OTP Verification */}
           {forgotStep === "otp" && (
-            <form onSubmit={handleVerifyOTP} className="space-y-6">
+            <form onSubmit={handleVerifyOTP} className="space-y-4 sm:space-y-6">
               <div>
                 <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>
                   Enter OTP
                 </label>
                 <div className="relative">
-                  <Shield className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme.textMuted}`} />
+                  <Shield className={`absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 ${theme.textMuted}`} />
                   <input
                     type="text"
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                     placeholder="000000"
                     maxLength={6}
-                    className={`w-full pl-10 pr-4 py-3 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-2xl tracking-widest`}
+                    className={`w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3 rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500 text-center text-xl sm:text-2xl tracking-wider sm:tracking-widest`}
                     required
                   />
                 </div>
@@ -692,16 +692,16 @@ const AdminLogin = () => {
               <button
                 type="submit"
                 disabled={loading || otp.length !== 6}
-                className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-2.5 sm:py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
               >
                 {loading ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     Verifying...
                   </>
                 ) : (
                   <>
-                    <Shield className="w-5 h-5" />
+                    <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
                     Verify OTP
                   </>
                 )}
@@ -712,9 +712,9 @@ const AdminLogin = () => {
                   type="button"
                   onClick={handleResendOTP}
                   disabled={resendTimer > 0 || loading}
-                  className={`text-sm ${resendTimer > 0 ? theme.textMuted : "text-blue-600 hover:text-blue-700"} transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-2 mx-auto`}
+                  className={`text-xs sm:text-sm ${resendTimer > 0 ? theme.textMuted : "text-blue-600 hover:text-blue-700"} transition-colors disabled:cursor-not-allowed flex items-center justify-center gap-1.5 sm:gap-2 mx-auto`}
                 >
-                  <RefreshCw className={`w-4 h-4 ${loading && "animate-spin"}`} />
+                  <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${loading && "animate-spin"}`} />
                   {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : "Resend OTP"}
                 </button>
               </div>

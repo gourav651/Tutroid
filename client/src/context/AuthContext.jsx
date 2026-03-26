@@ -3,7 +3,6 @@ import ApiService from "../services/api";
 
 const AuthContext = createContext();
 
-// ================= ACTION TYPES =================
 const AUTH_ACTIONS = {
   LOGIN_START: "LOGIN_START",
   LOGIN_SUCCESS: "LOGIN_SUCCESS",
@@ -19,7 +18,6 @@ const AUTH_ACTIONS = {
   SYNC_PROFILE_DATA: "SYNC_PROFILE_DATA",
 };
 
-// ================= SAFE LOCALSTORAGE HYDRATION =================
 const storedToken = localStorage.getItem("token");
 const storedUserRaw = localStorage.getItem("user");
 
@@ -32,10 +30,9 @@ try {
       : null;
 } catch {
   parsedUser = null;
-  localStorage.removeItem("user"); // cleanup corrupted value
+  localStorage.removeItem("user");
 }
 
-// ================= INITIAL STATE =================
 const initialState = {
   user: parsedUser,
   token: storedToken || null,
@@ -44,7 +41,6 @@ const initialState = {
   error: null,
 };
 
-// ================= REDUCER =================
 const authReducer = (state, action) => {
   switch (action.type) {
     case AUTH_ACTIONS.LOGIN_START:
@@ -122,7 +118,6 @@ const authReducer = (state, action) => {
       };
 
     case AUTH_ACTIONS.SYNC_PROFILE_DATA:
-      // Directly sync profile data without API call (used after profile update)
       const syncedUser = {
         ...state.user,
         ...action.payload,
@@ -138,7 +133,6 @@ const authReducer = (state, action) => {
   }
 };
 
-// ================= PROVIDER =================
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
@@ -169,14 +163,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await ApiService.signup(userData);
 
-      // Handle OTP verification flow
       if (response.success && response.requiresVerification) {
-        // Don't dispatch success yet - user needs to verify OTP first
         dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
         return response;
       }
 
-      // Handle direct login (if OTP is disabled)
       if (response.success && response.data?.token) {
         dispatch({
           type: AUTH_ACTIONS.SIGNUP_SUCCESS,
@@ -206,12 +197,11 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: AUTH_ACTIONS.UPDATE_PROFILE_START });
 
     try {
-      // Use the generic user profile update endpoint
       const response = await ApiService.updateGeneralProfile(profileData);
 
       const updatedUser = {
         ...state.user,
-        ...response.data, // use data from backend
+        ...response.data,
       };
 
       dispatch({
@@ -229,7 +219,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Sync profile data without making API call (for immediate UI updates)
   const syncProfileData = (profileData) => {
     dispatch({
       type: AUTH_ACTIONS.SYNC_PROFILE_DATA,
@@ -255,7 +244,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// ================= CUSTOM HOOK =================
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

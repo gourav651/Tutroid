@@ -5,7 +5,7 @@ import client from "../../db.js";
 import { AppError } from "../../utils/AppError.js";
 import { sendVerificationOTPEmail } from "../../services/email.service.js";
 
-const SALT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 4; // Reduced from 10 to 4 for faster hashing
+const SALT_ROUNDS = Number(process.env.BCRYPT_ROUNDS) || 10; // Reduced from 10 to 4 for faster hashing
 const OTP_EXPIRY_MINUTES = 10;
 
 /**

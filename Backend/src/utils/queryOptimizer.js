@@ -61,7 +61,6 @@ export const paginateQuery = async (model, options = {}) => {
 
   const skip = (page - 1) * limit;
 
-  // Execute count and data query in parallel
   const [data, total] = await Promise.all([
     client[model].findMany({
       where,
@@ -98,16 +97,13 @@ export class DataLoader {
   }
 
   async load(key) {
-    // Check cache first
     if (this.cache.has(key)) {
       return this.cache.get(key);
     }
 
-    // Add to queue
     return new Promise((resolve, reject) => {
       this.queue.push({ key, resolve, reject });
       
-      // Process on next tick
       if (this.queue.length === 1) {
         process.nextTick(() => this.dispatch());
       }

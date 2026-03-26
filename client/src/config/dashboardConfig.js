@@ -1,5 +1,4 @@
-// Dashboard configuration for different user types
-// Easy to add, remove, or modify features
+import { DEFAULT_PROFILE_IMAGE } from "../utils/constants";
 
 export const DASHBOARD_CONFIG = {
   student: {
@@ -12,10 +11,10 @@ export const DASHBOARD_CONFIG = {
     },
     leftSidebar: {
       profile: {
-        name: "Deepak Mahato",
-        role: "Computer Science Student",
-        profileViewers: 30,
-        avatar: "https://i.pravatar.cc/100",
+        name: "",
+        role: "Student",
+        profileViewers: 0,
+        avatar: DEFAULT_PROFILE_IMAGE,
       },
       menuItems: [
         { id: "saved-courses", label: "Saved Courses", icon: "BookOpen" },
@@ -46,9 +45,9 @@ export const DASHBOARD_CONFIG = {
     },
     leftSidebar: {
       profile: {
-        name: "John Trainer",
-        role: "JavaScript Expert Trainer",
-        avatar: "https://i.pravatar.cc/120",
+        name: "",
+        role: "Trainer",
+        avatar: DEFAULT_PROFILE_IMAGE,
       },
       menuItems: [{ id: "reviews", label: "Reviews", icon: "Star" }],
     },
@@ -75,11 +74,11 @@ export const DASHBOARD_CONFIG = {
     },
     leftSidebar: {
       profile: {
-        name: "Tech Academy Institute",
+        name: "",
         role: "Educational Institution",
-        trainersCount: 45,
-        studentsCount: 1200,
-        avatar: "https://i.pravatar.cc/130",
+        trainersCount: 0,
+        studentsCount: 0,
+        avatar: DEFAULT_PROFILE_IMAGE,
       },
       menuItems: [
         { id: "find-trainers", label: "Find Trainers", icon: "Search" },
@@ -103,7 +102,6 @@ export const DASHBOARD_CONFIG = {
   },
 };
 
-// Feature flags - easily enable/disable features
 export const FEATURE_FLAGS = {
   enableAnalytics: true,
   enableEarnings: true,
@@ -112,7 +110,6 @@ export const FEATURE_FLAGS = {
   enableAdvancedFilters: true,
 };
 
-// User types enum
 export const USER_TYPES = {
   STUDENT: "student",
   TRAINER: "trainer",

@@ -15,7 +15,6 @@ export const generateTrainerUniqueId = async () => {
     return "TRN0001";
   }
 
-  // Extract number from last ID and increment
   const lastNumber = parseInt(lastTrainer.uniqueId.substring(3));
   const nextNumber = lastNumber + 1;
   return `TRN${nextNumber.toString().padStart(4, "0")}`;
@@ -36,7 +35,6 @@ export const generateInstitutionUniqueId = async () => {
     return "INST0001";
   }
 
-  // Extract number from last ID and increment
   const lastNumber = parseInt(lastInstitution.uniqueId.substring(4));
   const nextNumber = lastNumber + 1;
   return `INST${nextNumber.toString().padStart(4, "0")}`;

@@ -68,16 +68,16 @@ const VerifyOTP = () => {
   };
 
   return (
-    <div className={`min-h-screen ${theme.bgPrimary} flex items-center justify-center p-4`}>
-      <div className={`${theme.cardBg} rounded-xl border ${theme.cardBorder} shadow-xl w-full max-w-md p-8`}>
+    <div className={`min-h-screen ${theme.bgPrimary} flex items-center justify-center p-3 sm:p-4`}>
+      <div className={`${theme.cardBg} rounded-xl border ${theme.cardBorder} shadow-xl w-full max-w-md p-4 sm:p-8`}>
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <KeyRound className="w-8 h-8 text-blue-600" />
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+            <KeyRound className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
           </div>
-          <h1 className={`text-2xl font-bold ${theme.textPrimary}`}>Enter OTP</h1>
-          <p className={`${theme.textSecondary} mt-2`}>
-            Enter the 6-digit code sent to <strong>{email}</strong>
+          <h1 className={`text-xl sm:text-2xl font-bold ${theme.textPrimary}`}>Enter OTP</h1>
+          <p className={`${theme.textSecondary} mt-2 text-sm sm:text-base`}>
+            Enter the 6-digit code sent to <br className="sm:hidden" /><strong className="break-all">{email}</strong>
           </p>
         </div>
 
@@ -89,7 +89,7 @@ const VerifyOTP = () => {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           <div>
             <label className={`block text-sm font-medium ${theme.textSecondary} mb-2`}>
               OTP Code
@@ -103,10 +103,10 @@ const VerifyOTP = () => {
               }}
               placeholder="000000"
               maxLength={6}
-              className={`w-full px-4 py-3 text-center text-2xl tracking-[0.5em] rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-center text-xl sm:text-2xl tracking-[0.3em] sm:tracking-[0.5em] rounded-lg border ${theme.inputBorder} ${theme.cardBg} ${theme.textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
               required
             />
-            <p className={`mt-2 text-xs ${theme.textMuted}`}>
+            <p className={`mt-2 text-xs ${theme.textMuted} text-center`}>
               OTP expires in 10 minutes
             </p>
           </div>
@@ -114,11 +114,11 @@ const VerifyOTP = () => {
           <button
             type="submit"
             disabled={loading || otp.length !== 6}
-            className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-2.5 sm:py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             {loading ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                 Verifying...
               </>
             ) : (
@@ -128,21 +128,21 @@ const VerifyOTP = () => {
         </form>
 
         {/* Resend & Back */}
-        <div className="mt-6 space-y-3">
+        <div className="mt-4 sm:mt-6 space-y-2 sm:space-y-3">
           <button
             onClick={handleResend}
             disabled={resendLoading}
-            className={`flex items-center justify-center gap-2 w-full text-sm ${theme.textMuted} hover:${theme.textSecondary} transition-colors disabled:opacity-50`}
+            className={`flex items-center justify-center gap-2 w-full text-xs sm:text-sm ${theme.textMuted} hover:${theme.textSecondary} transition-colors disabled:opacity-50`}
           >
-            <RefreshCw className={`w-4 h-4 ${resendLoading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${resendLoading ? "animate-spin" : ""}`} />
             {resendLoading ? "Resending..." : "Didn't receive it? Resend OTP"}
           </button>
 
           <Link
             to="/forgot-password"
-            className={`flex items-center justify-center gap-2 text-sm ${theme.textMuted} hover:${theme.textSecondary} transition-colors`}
+            className={`flex items-center justify-center gap-2 text-xs sm:text-sm ${theme.textMuted} hover:${theme.textSecondary} transition-colors`}
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
             Change Email
           </Link>
         </div>

@@ -224,7 +224,6 @@ export const sendPasswordResetConfirmation = async (email) => {
     return { success: true };
   } catch (error) {
     console.error("[Email] ❌ Error sending confirmation:", error.message);
-    // Don't throw - this is a non-critical email
     return { success: false };
   }
 };

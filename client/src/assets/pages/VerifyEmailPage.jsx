@@ -134,20 +134,20 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-3 sm:px-6">
       <div className="max-w-md w-full">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-            <Mail className="w-8 h-8 text-blue-600" />
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full mb-3 sm:mb-4">
+            <Mail className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
             Verify Your Email
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-sm sm:text-base">
             We've sent a 6-digit code to
             <br />
-            <span className="font-semibold text-gray-900">{email}</span>
+            <span className="font-semibold text-gray-900 break-all">{email}</span>
           </p>
         </div>
 
@@ -189,9 +189,9 @@ export default function VerifyEmailPage() {
         )}
 
         {/* OTP Form */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-8">
           <form onSubmit={handleSubmit}>
-            <div className="flex gap-3 justify-center mb-6">
+            <div className="flex gap-1.5 sm:gap-3 justify-center mb-4 sm:mb-6">
               {otp.map((digit, index) => (
                 <input
                   key={index}
@@ -203,7 +203,7 @@ export default function VerifyEmailPage() {
                   onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={handlePaste}
-                  className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                  className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold border-2 border-gray-200 rounded-lg sm:rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
                   disabled={isLoading || success}
                 />
               ))}
@@ -212,42 +212,42 @@ export default function VerifyEmailPage() {
             <button
               type="submit"
               disabled={isLoading || success || otp.join("").length !== 6}
-              className="w-full bg-gray-900 hover:bg-gray-800 text-white py-4 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gray-900 hover:bg-gray-800 text-white py-3 sm:py-4 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             >
               {isLoading ? (
                 <>
-                  <Loader className="w-5 h-5 animate-spin" />
+                  <Loader className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                   Verifying...
                 </>
               ) : success ? (
                 <>
-                  <CheckCircle className="w-5 h-5" />
+                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                   Verified!
                 </>
               ) : (
                 <>
                   Verify Email
-                  <ArrowRight size={20} />
+                  <ArrowRight size={18} className="sm:w-5 sm:h-5" />
                 </>
               )}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-gray-600 text-sm mb-3">
+          <div className="mt-4 sm:mt-6 text-center">
+            <p className="text-gray-600 text-xs sm:text-sm mb-2 sm:mb-3">
               Didn't receive the code?
             </p>
             <button
               onClick={handleResendOtp}
               disabled={resendLoading || success}
-              className="text-blue-600 font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-blue-600 font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             >
               {resendLoading ? "Sending..." : "Resend OTP"}
             </button>
           </div>
 
-          <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-            <p className="text-gray-500 text-sm">
+          <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100 text-center">
+            <p className="text-gray-500 text-xs sm:text-sm">
               Wrong email?{" "}
               <button
                 onClick={() => navigate("/signup")}
@@ -259,7 +259,7 @@ export default function VerifyEmailPage() {
           </div>
         </div>
 
-        <div className="mt-6 text-center">
+        <div className="mt-4 sm:mt-6 text-center">
           <p className="text-gray-500 text-xs">
             The OTP will expire in 10 minutes
           </p>

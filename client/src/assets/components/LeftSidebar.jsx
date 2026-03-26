@@ -17,7 +17,6 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
   const [currentProfile, setCurrentProfile] = useState(profile);
   const [profileSummary, setProfileSummary] = useState(null);
 
-  // Fetch comprehensive profile summary
   useEffect(() => {
     const fetchProfileSummary = async () => {
       try {
@@ -25,7 +24,6 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
         if (response.success && response.data) {
           setProfileSummary(response.data);
 
-          // Update current profile with fetched data
           const {
             user,
             trainerProfile,
@@ -62,7 +60,6 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
     fetchProfileSummary();
   }, [userType]);
 
-  // Listen for profile updates from ProfilePage
   useEffect(() => {
     const handleProfileUpdate = (event) => {
       const updatedData = event.detail;
@@ -80,7 +77,6 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
       window.removeEventListener("profileUpdated", handleProfileUpdate);
   }, []);
 
-  // Also sync with AuthContext user changes
   useEffect(() => {
     if (authUser) {
       setCurrentProfile((prev) => ({
@@ -101,7 +97,6 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
     }
   };
 
-  // Different stats based on user type
   const getStats = () => {
     if (userType === USER_TYPES.TRAINER) {
       return [
@@ -324,7 +319,6 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
         >
           {menuItems.map((item) => {
           const handleClick = () => {
-            // Navigate based on item id and user type
             if (userType === USER_TYPES.TRAINER) {
               if (item.id === "reviews") {
                 navigate("/trainer/reviews");

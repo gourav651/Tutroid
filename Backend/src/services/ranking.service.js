@@ -18,7 +18,6 @@ export class RankingService {
 
       const skip = (page - 1) * limit;
 
-      // Build where clause
       const where = {
         isActive: true,
         deletedAt: null,
@@ -49,7 +48,6 @@ export class RankingService {
         where.verified = true;
       }
 
-      // Get trainers with all necessary data for ranking
       const trainers = await prisma.trainerProfile.findMany({
         where,
         include: {
@@ -90,7 +88,6 @@ export class RankingService {
         take: limit
       });
 
-      // Get total count for pagination
       const totalCount = await prisma.trainerProfile.count({ where });
 
       return {
@@ -131,7 +128,6 @@ export class RankingService {
         throw new Error('Trainer not found');
       }
 
-      // Get trainer's position in ranking
       const rank = await prisma.trainerProfile.count({
         where: {
           isActive: true,
@@ -142,7 +138,6 @@ export class RankingService {
         }
       }) + 1;
 
-      // Get total number of active trainers
       const totalTrainers = await prisma.trainerProfile.count({
         where: {
           isActive: true,
@@ -150,7 +145,6 @@ export class RankingService {
         }
       });
 
-      // Calculate percentile
       const percentile = ((totalTrainers - rank + 1) / totalTrainers) * 100;
 
       return {
@@ -335,7 +329,6 @@ export class RankingService {
         take: limit
       });
 
-      // Flatten skills array and count occurrences
       const skillCounts = {};
       skills.forEach(item => {
         item.skills.forEach(skill => {
@@ -343,7 +336,6 @@ export class RankingService {
         });
       });
 
-      // Sort by count and return top skills
       return Object.entries(skillCounts)
         .sort(([,a], [,b]) => b - a)
         .slice(0, limit)
