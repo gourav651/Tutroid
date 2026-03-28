@@ -1,12 +1,10 @@
+import "dotenv/config.js";
 import app from "./app.js";
-import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createServer } from "http";
 import { initializeSocket } from "./socket/socket.js";
-
-dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const storageDir = path.join(__dirname, "../storage/materials");

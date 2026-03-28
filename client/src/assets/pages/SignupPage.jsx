@@ -318,12 +318,7 @@ export default function SignupPage() {
                 ))}
               </div>
 
-              <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-white/50 rounded-xl">
-                <p className="text-xs sm:text-sm text-gray-600">
-                  <span className="font-semibold">Free to get started.</span> No
-                  credit card required. Upgrade anytime.
-                </p>
-              </div>
+           
             </div>
           </div>
         ) : (

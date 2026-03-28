@@ -255,8 +255,9 @@ export default function Navbar({ userType = USER_TYPES.STUDENT }) {
           className="flex items-center gap-2 sm:gap-2.5 cursor-pointer flex-shrink-0"
           onClick={() => navigate(getDashboardRoute())}
         >
-          <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-            <Building2 className="text-white w-4 h-4 sm:w-5 sm:h-5" />
+          <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-300 to-indigo-300 rounded-xl flex items-center justify-center shadow-lg">
+           
+          <img src="./public/images/image.svg" alt="" className="text-white w-4 h-4 sm:w-5 sm:h-5"/>
           </div>
           <h1 className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent font-bold text-lg sm:text-xl tracking-tight">
             Tutroid

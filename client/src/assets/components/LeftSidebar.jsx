@@ -9,19 +9,34 @@ import { DEFAULT_PROFILE_IMAGE } from "../../utils/constants";
 
 export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
   const config = DASHBOARD_CONFIG[userType];
-  const profile = config.leftSidebar.profile;
   const menuItems = config.leftSidebar.menuItems;
   const { theme } = useTheme();
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
-  const [currentProfile, setCurrentProfile] = useState(profile);
+
+  // Always base the initial profile on the static config (blank slate)
+  const getDefaultProfile = () => ({ ...config.leftSidebar.profile });
+
+  const [currentProfile, setCurrentProfile] = useState(getDefaultProfile);
   const [profileSummary, setProfileSummary] = useState(null);
 
   useEffect(() => {
+    // Reset to blank slate whenever the logged-in user or userType changes
+    setCurrentProfile(getDefaultProfile());
+    setProfileSummary(null);
+
     const fetchProfileSummary = async () => {
+      // Only fetch if we have an authenticated user
+      if (!authUser?.id) return;
+
       try {
         const response = await ApiService.getProfileSummary();
         if (response.success && response.data) {
+          // Guard: make sure the response belongs to the current auth user
+          if (response.data.user?.id && response.data.user.id !== authUser.id) {
+            return;
+          }
+
           setProfileSummary(response.data);
 
           const {
@@ -31,6 +46,7 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
             currentEducation,
             currentExperience,
           } = response.data;
+
           setCurrentProfile((prev) => ({
             ...prev,
             name:
@@ -58,7 +74,8 @@ export default function LeftSidebar({ userType = USER_TYPES.STUDENT }) {
     };
 
     fetchProfileSummary();
-  }, [userType]);
+    // Re-fetch whenever the authenticated user's id or userType changes
+  }, [authUser?.id, userType]);
 
   useEffect(() => {
     const handleProfileUpdate = (event) => {
